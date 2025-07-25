@@ -1,12 +1,12 @@
-// Copyright (C) 2019-2025, Lux Partners Limited. All rights reserved.
+// Copyright (C) 2019-2025, Lux Industries Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 
 package db
 
 import "errors"
 
-// Common database errors.
+// common errors
 var (
-	ErrClosed   = errors.New("database closed")
+	ErrClosed   = errors.New("closed")
 	ErrNotFound = errors.New("not found")
 )
