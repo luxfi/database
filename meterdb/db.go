@@ -133,58 +133,58 @@ func New(
 
 func (db *Database) Has(key []byte) (bool, error) {
 	start := time.Now()
-	has, err := database.database.Has(key)
+	has, err := db.db.Has(key)
 	duration := time.Since(start)
 
-	database.calls.With(hasLabel).Inc()
-	database.duration.With(hasLabel).Add(float64(duration))
-	database.size.With(hasLabel).Add(float64(len(key)))
+	db.calls.With(hasLabel).Inc()
+	db.duration.With(hasLabel).Add(float64(duration))
+	db.size.With(hasLabel).Add(float64(len(key)))
 	return has, err
 }
 
 func (db *Database) Get(key []byte) ([]byte, error) {
 	start := time.Now()
-	value, err := database.database.Get(key)
+	value, err := db.db.Get(key)
 	duration := time.Since(start)
 
-	database.calls.With(getLabel).Inc()
-	database.duration.With(getLabel).Add(float64(duration))
-	database.size.With(getLabel).Add(float64(len(key) + len(value)))
+	db.calls.With(getLabel).Inc()
+	db.duration.With(getLabel).Add(float64(duration))
+	db.size.With(getLabel).Add(float64(len(key) + len(value)))
 	return value, err
 }
 
 func (db *Database) Put(key, value []byte) error {
 	start := time.Now()
-	err := database.database.Put(key, value)
+	err := db.db.Put(key, value)
 	duration := time.Since(start)
 
-	database.calls.With(putLabel).Inc()
-	database.duration.With(putLabel).Add(float64(duration))
-	database.size.With(putLabel).Add(float64(len(key) + len(value)))
+	db.calls.With(putLabel).Inc()
+	db.duration.With(putLabel).Add(float64(duration))
+	db.size.With(putLabel).Add(float64(len(key) + len(value)))
 	return err
 }
 
 func (db *Database) Delete(key []byte) error {
 	start := time.Now()
-	err := database.database.Delete(key)
+	err := db.db.Delete(key)
 	duration := time.Since(start)
 
-	database.calls.With(deleteLabel).Inc()
-	database.duration.With(deleteLabel).Add(float64(duration))
-	database.size.With(deleteLabel).Add(float64(len(key)))
+	db.calls.With(deleteLabel).Inc()
+	db.duration.With(deleteLabel).Add(float64(duration))
+	db.size.With(deleteLabel).Add(float64(len(key)))
 	return err
 }
 
 func (db *Database) NewBatch() database.Batch {
 	start := time.Now()
 	b := &batch{
-		batch: database.database.NewBatch(),
+		batch: db.db.NewBatch(),
 		db:    db,
 	}
 	duration := time.Since(start)
 
-	database.calls.With(newBatchLabel).Inc()
-	database.duration.With(newBatchLabel).Add(float64(duration))
+	db.calls.With(newBatchLabel).Inc()
+	db.duration.With(newBatchLabel).Add(float64(duration))
 	return b
 }
 
@@ -206,43 +206,43 @@ func (db *Database) NewIteratorWithStartAndPrefix(
 ) database.Iterator {
 	startTime := time.Now()
 	it := &iterator{
-		iterator: database.database.NewIteratorWithStartAndPrefix(start, prefix),
+		iterator: db.db.NewIteratorWithStartAndPrefix(start, prefix),
 		db:       db,
 	}
 	duration := time.Since(startTime)
 
-	database.calls.With(newIteratorLabel).Inc()
-	database.duration.With(newIteratorLabel).Add(float64(duration))
+	db.calls.With(newIteratorLabel).Inc()
+	db.duration.With(newIteratorLabel).Add(float64(duration))
 	return it
 }
 
 func (db *Database) Compact(start, limit []byte) error {
 	startTime := time.Now()
-	err := database.database.Compact(start, limit)
+	err := db.db.Compact(start, limit)
 	duration := time.Since(startTime)
 
-	database.calls.With(compactLabel).Inc()
-	database.duration.With(compactLabel).Add(float64(duration))
+	db.calls.With(compactLabel).Inc()
+	db.duration.With(compactLabel).Add(float64(duration))
 	return err
 }
 
 func (db *Database) Close() error {
 	start := time.Now()
-	err := database.database.Close()
+	err := db.db.Close()
 	duration := time.Since(start)
 
-	database.calls.With(closeLabel).Inc()
-	database.duration.With(closeLabel).Add(float64(duration))
+	db.calls.With(closeLabel).Inc()
+	db.duration.With(closeLabel).Add(float64(duration))
 	return err
 }
 
 func (db *Database) HealthCheck() error {
 	start := time.Now()
-	err := database.database.HealthCheck()
+	err := db.db.HealthCheck()
 	duration := time.Since(start)
 
-	database.calls.With(healthCheckLabel).Inc()
-	database.duration.With(healthCheckLabel).Add(float64(duration))
+	db.calls.With(healthCheckLabel).Inc()
+	db.duration.With(healthCheckLabel).Add(float64(duration))
 	return err
 }
 
@@ -256,9 +256,9 @@ func (b *batch) Put(key, value []byte) error {
 	err := b.batch.Put(key, value)
 	duration := time.Since(start)
 
-	b.database.calls.With(batchPutLabel).Inc()
-	b.database.duration.With(batchPutLabel).Add(float64(duration))
-	b.database.size.With(batchPutLabel).Add(float64(len(key) + len(value)))
+	b.db.calls.With(batchPutLabel).Inc()
+	b.db.duration.With(batchPutLabel).Add(float64(duration))
+	b.db.size.With(batchPutLabel).Add(float64(len(key) + len(value)))
 	return err
 }
 
@@ -267,9 +267,9 @@ func (b *batch) Delete(key []byte) error {
 	err := b.batch.Delete(key)
 	duration := time.Since(start)
 
-	b.database.calls.With(batchDeleteLabel).Inc()
-	b.database.duration.With(batchDeleteLabel).Add(float64(duration))
-	b.database.size.With(batchDeleteLabel).Add(float64(len(key)))
+	b.db.calls.With(batchDeleteLabel).Inc()
+	b.db.duration.With(batchDeleteLabel).Add(float64(duration))
+	b.db.size.With(batchDeleteLabel).Add(float64(len(key)))
 	return err
 }
 
@@ -278,8 +278,8 @@ func (b *batch) Size() int {
 	size := b.batch.Size()
 	duration := time.Since(start)
 
-	b.database.calls.With(batchSizeLabel).Inc()
-	b.database.duration.With(batchSizeLabel).Add(float64(duration))
+	b.db.calls.With(batchSizeLabel).Inc()
+	b.db.duration.With(batchSizeLabel).Add(float64(duration))
 	return size
 }
 
@@ -289,9 +289,9 @@ func (b *batch) Write() error {
 	duration := time.Since(start)
 	size := b.batch.Size()
 
-	b.database.calls.With(batchWriteLabel).Inc()
-	b.database.duration.With(batchWriteLabel).Add(float64(duration))
-	b.database.size.With(batchWriteLabel).Add(float64(size))
+	b.db.calls.With(batchWriteLabel).Inc()
+	b.db.duration.With(batchWriteLabel).Add(float64(duration))
+	b.db.size.With(batchWriteLabel).Add(float64(size))
 	return err
 }
 
@@ -300,8 +300,8 @@ func (b *batch) Reset() {
 	b.batch.Reset()
 	duration := time.Since(start)
 
-	b.database.calls.With(batchResetLabel).Inc()
-	b.database.duration.With(batchResetLabel).Add(float64(duration))
+	b.db.calls.With(batchResetLabel).Inc()
+	b.db.duration.With(batchResetLabel).Add(float64(duration))
 }
 
 func (b *batch) Replay(w database.KeyValueWriterDeleter) error {
@@ -309,8 +309,8 @@ func (b *batch) Replay(w database.KeyValueWriterDeleter) error {
 	err := b.batch.Replay(w)
 	duration := time.Since(start)
 
-	b.database.calls.With(batchReplayLabel).Inc()
-	b.database.duration.With(batchReplayLabel).Add(float64(duration))
+	b.db.calls.With(batchReplayLabel).Inc()
+	b.db.duration.With(batchReplayLabel).Add(float64(duration))
 	return err
 }
 
@@ -319,8 +319,8 @@ func (b *batch) Inner() database.Batch {
 	inner := b.batch.Inner()
 	duration := time.Since(start)
 
-	b.database.calls.With(batchInnerLabel).Inc()
-	b.database.duration.With(batchInnerLabel).Add(float64(duration))
+	b.db.calls.With(batchInnerLabel).Inc()
+	b.db.duration.With(batchInnerLabel).Add(float64(duration))
 	return inner
 }
 
@@ -335,9 +335,9 @@ func (it *iterator) Next() bool {
 	duration := time.Since(start)
 	size := len(it.iterator.Key()) + len(it.iterator.Value())
 
-	it.database.calls.With(iteratorNextLabel).Inc()
-	it.database.duration.With(iteratorNextLabel).Add(float64(duration))
-	it.database.size.With(iteratorNextLabel).Add(float64(size))
+	it.db.calls.With(iteratorNextLabel).Inc()
+	it.db.duration.With(iteratorNextLabel).Add(float64(duration))
+	it.db.size.With(iteratorNextLabel).Add(float64(size))
 	return next
 }
 
@@ -346,8 +346,8 @@ func (it *iterator) Error() error {
 	err := it.iterator.Error()
 	duration := time.Since(start)
 
-	it.database.calls.With(iteratorErrorLabel).Inc()
-	it.database.duration.With(iteratorErrorLabel).Add(float64(duration))
+	it.db.calls.With(iteratorErrorLabel).Inc()
+	it.db.duration.With(iteratorErrorLabel).Add(float64(duration))
 	return err
 }
 
@@ -356,8 +356,8 @@ func (it *iterator) Key() []byte {
 	key := it.iterator.Key()
 	duration := time.Since(start)
 
-	it.database.calls.With(iteratorKeyLabel).Inc()
-	it.database.duration.With(iteratorKeyLabel).Add(float64(duration))
+	it.db.calls.With(iteratorKeyLabel).Inc()
+	it.db.duration.With(iteratorKeyLabel).Add(float64(duration))
 	return key
 }
 
@@ -366,8 +366,8 @@ func (it *iterator) Value() []byte {
 	value := it.iterator.Value()
 	duration := time.Since(start)
 
-	it.database.calls.With(iteratorValueLabel).Inc()
-	it.database.duration.With(iteratorValueLabel).Add(float64(duration))
+	it.db.calls.With(iteratorValueLabel).Inc()
+	it.db.duration.With(iteratorValueLabel).Add(float64(duration))
 	return value
 }
 
@@ -376,6 +376,6 @@ func (it *iterator) Release() {
 	it.iterator.Release()
 	duration := time.Since(start)
 
-	it.database.calls.With(iteratorReleaseLabel).Inc()
-	it.database.duration.With(iteratorReleaseLabel).Add(float64(duration))
+	it.db.calls.With(iteratorReleaseLabel).Inc()
+	it.db.duration.With(iteratorReleaseLabel).Add(float64(duration))
 }
