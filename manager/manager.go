@@ -9,12 +9,12 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/luxfi/db"
-	"github.com/luxfi/db/leveldb"
-	"github.com/luxfi/db/memdb"
-	"github.com/luxfi/db/metricdb"
-	"github.com/luxfi/db/prefixdb"
-	"github.com/luxfi/db/versiondb"
+	"github.com/luxfi/database"
+	"github.com/luxfi/database/leveldb"
+	"github.com/luxfi/database/memdb"
+	"github.com/luxfi/database/metricdb"
+	"github.com/luxfi/database/prefixdb"
+	"github.com/luxfi/database/versiondb"
 	"github.com/prometheus/client_golang/prometheus"
 )
 

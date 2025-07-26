@@ -10,7 +10,7 @@ import (
 	"bytes"
 	"errors"
 
-	"github.com/luxfi/db"
+	"github.com/luxfi/database"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/iterator"
 	"github.com/syndtr/goleveldb/leveldb/opt"

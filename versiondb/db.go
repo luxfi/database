@@ -7,7 +7,7 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/luxfi/db"
+	"github.com/luxfi/database"
 )
 
 // Database wraps a database to allow version management.

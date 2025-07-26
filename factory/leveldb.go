@@ -4,8 +4,8 @@
 package factory
 
 import (
-	"github.com/luxfi/db"
-	"github.com/luxfi/db/leveldb"
+	"github.com/luxfi/database"
+	"github.com/luxfi/database/leveldb"
 )
 
 func newLevelDB(config DatabaseConfig) (db.Database, error) {

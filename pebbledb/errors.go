@@ -10,7 +10,7 @@ import (
 	"errors"
 
 	"github.com/cockroachdb/pebble"
-	database "github.com/luxfi/db"
+	database "github.com/luxfi/database"
 )
 
 var (

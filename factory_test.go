@@ -1,15 +1,15 @@
 // Copyright (C) 2020-2025, Lux Industries Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 
-package db_test
+package database
 
 import (
 	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/luxfi/db/dbtest"
-	"github.com/luxfi/db/factory"
+	"github.com/luxfi/database/dbtest"
+	"github.com/luxfi/database/factory"
 	"github.com/stretchr/testify/require"
 )
 
@@ -48,7 +48,7 @@ func TestFactoryDatabases(t *testing.T) {
 		t.Run(config.Type, func(t *testing.T) {
 			// Try to create the database
 			db, err := factory.New(config)
-			
+
 			// Check if this is an expected failure due to missing build tags
 			if err != nil {
 				if config.Type == "pebbledb" {

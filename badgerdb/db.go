@@ -12,7 +12,7 @@ import (
 	"sync"
 
 	badger "github.com/dgraph-io/badger/v4"
-	"github.com/luxfi/db"
+	"github.com/luxfi/database"
 	"github.com/prometheus/client_golang/prometheus"
 )
 

@@ -6,7 +6,7 @@ package prefixdb
 import (
 	"sync"
 
-	"github.com/luxfi/db"
+	"github.com/luxfi/database"
 )
 
 // Database partitions a database into a sub-database by prefixing all keys with

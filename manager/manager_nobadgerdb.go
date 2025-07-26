@@ -9,7 +9,7 @@ package manager
 import (
 	"errors"
 
-	"github.com/luxfi/db"
+	"github.com/luxfi/database"
 	"github.com/prometheus/client_golang/prometheus"
 )
 

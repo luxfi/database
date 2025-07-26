@@ -12,7 +12,7 @@ import (
 
 	"github.com/cockroachdb/pebble"
 	"github.com/cockroachdb/pebble/bloom"
-	database "github.com/luxfi/db"
+	database "github.com/luxfi/database"
 	"github.com/prometheus/client_golang/prometheus"
 )
 

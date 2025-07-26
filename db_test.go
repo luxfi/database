@@ -1,16 +1,15 @@
 // Copyright (C) 2020-2025, Lux Industries Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 
-package db_test
+package database
 
 import (
 	"errors"
 	"path/filepath"
 	"testing"
 
-	"github.com/luxfi/db"
-	"github.com/luxfi/db/dbtest"
-	"github.com/luxfi/db/factory"
+	"github.com/luxfi/database/dbtest"
+	"github.com/luxfi/database/factory"
 )
 
 var backends = []struct {
@@ -52,7 +51,7 @@ func TestAllBackends(t *testing.T) {
 						t.Fatalf("create %s: %v", b.engine, err)
 					}
 					defer dbi.Close()
-					
+
 					testFunc(t, dbi)
 				})
 			}
@@ -70,12 +69,11 @@ func backendEnabled(engine string) bool {
 	if dbi != nil {
 		dbi.Close()
 	}
-	
+
 	// Check if the error is ErrBackendDisabled
 	var errBackend *db.ErrBackendDisabled
 	return !errors.As(err, &errBackend)
 }
-
 
 // TestBenchmarks runs the benchmark suite against all backends
 func TestBenchmarks(t *testing.T) {

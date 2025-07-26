@@ -8,8 +8,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/luxfi/db"
-	"github.com/luxfi/db/memdb"
+	"github.com/luxfi/database"
+	"github.com/luxfi/database/memdb"
 )
 
 func TestLinkedDB(t *testing.T) {

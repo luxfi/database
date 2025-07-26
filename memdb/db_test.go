@@ -6,7 +6,7 @@ package memdb
 import (
 	"testing"
 
-	database "github.com/luxfi/db"
+	database "github.com/luxfi/database"
 	"github.com/stretchr/testify/require"
 )
 

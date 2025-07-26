@@ -7,8 +7,8 @@
 package factory
 
 import (
-	"github.com/luxfi/db"
-	"github.com/luxfi/db/badgerdb"
+	"github.com/luxfi/database"
+	"github.com/luxfi/database/badgerdb"
 )
 
 func newBadgerDB(config DatabaseConfig) (db.Database, error) {

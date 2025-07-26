@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/luxfi/db"
-	"github.com/luxfi/db/logging"
+	"github.com/luxfi/database"
+	"github.com/luxfi/database/logging"
 )
 
 var (
