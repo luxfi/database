@@ -6,14 +6,14 @@ package factory
 import (
 	"github.com/luxfi/database"
 	"github.com/luxfi/database/leveldb"
+	"github.com/luxfi/log"
 	"github.com/prometheus/client_golang/prometheus"
-	"go.uber.org/zap"
 )
 
 func newLevelDB(
 	dbPath string,
 	config []byte,
-	logger *zap.Logger,
+	logger log.Logger,
 	registerer prometheus.Registerer,
 	metricsPrefix string,
 ) (database.Database, error) {

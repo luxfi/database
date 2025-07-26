@@ -10,13 +10,12 @@ import (
 	"github.com/luxfi/database/badgerdb"
 	"github.com/luxfi/database/corruptabledb"
 	"github.com/luxfi/database/leveldb"
-	"github.com/luxfi/database/logging"
 	"github.com/luxfi/database/memdb"
 	"github.com/luxfi/database/meterdb"
 	"github.com/luxfi/database/pebbledb"
 	"github.com/luxfi/database/versiondb"
 	"github.com/prometheus/client_golang/prometheus"
-	"go.uber.org/zap"
+	"github.com/luxfi/log"
 )
 
 // New creates a new database with the provided configuration
@@ -26,7 +25,7 @@ func New(
 	readOnly bool,
 	config []byte,
 	gatherer interface{}, // Can be prometheus.Gatherer or metrics.MultiGatherer
-	logger *zap.Logger,
+	logger log.Logger,
 	metricsPrefix string,
 	meterDBRegName string,
 ) (database.Database, error) {
@@ -65,11 +64,8 @@ func New(
 		return nil, err
 	}
 
-	// Create a logging adapter for the logger
-	log := logging.NewZapAdapter(logger)
-
 	// Wrap with corruptabledb
-	db = corruptabledb.New(db, log)
+	db = corruptabledb.New(db, logger)
 
 	// Wrap with versiondb if read-only (except memdb)
 	if readOnly && name != memdb.Name {
