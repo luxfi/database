@@ -7,7 +7,7 @@ import (
 	"container/list"
 	"sync"
 
-	"github.com/luxfi/db/cache"
+	"github.com/luxfi/database/cache"
 )
 
 // Cache implements an LRU cache

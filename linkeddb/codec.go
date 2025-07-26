@@ -6,8 +6,8 @@ package linkeddb
 import (
 	"math"
 
-	"github.com/luxfi/db/codec"
-	"github.com/luxfi/db/codec/linear"
+	"github.com/luxfi/database/codec"
+	"github.com/luxfi/database/codec/linear"
 )
 
 const CodecVersion = 0

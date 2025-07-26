@@ -7,17 +7,17 @@ import (
 	"context"
 	"io"
 
-	"github.com/luxfi/db"
+	"github.com/luxfi/database"
 )
 
-// Ensure luxfi/db types implement our interfaces
+// Ensure luxfi/database types implement our interfaces
 var (
 	_ Database = (*dbAdapter)(nil)
 	_ Batch    = (*batchAdapter)(nil)
 	_ Iterator = (*iteratorAdapter)(nil)
 )
 
-// dbAdapter wraps a luxfi/db.Database to implement the node Database interface
+// dbAdapter wraps a luxfi/database.Database to implement the node Database interface
 type dbAdapter struct {
 	db db.Database
 }
@@ -84,7 +84,7 @@ func (d *dbAdapter) Close() error {
 
 // HealthCheck implements health.Checker
 func (d *dbAdapter) HealthCheck(ctx context.Context) (interface{}, error) {
-	// Call the luxfi/db HealthCheck (which doesn't take context)
+	// Call the luxfi/database HealthCheck (which doesn't take context)
 	err := d.db.HealthCheck()
 	if err != nil {
 		return nil, err
@@ -92,7 +92,7 @@ func (d *dbAdapter) HealthCheck(ctx context.Context) (interface{}, error) {
 	return map[string]string{"status": "healthy"}, nil
 }
 
-// batchAdapter wraps a luxfi/db.Batch
+// batchAdapter wraps a luxfi/database.Batch
 type batchAdapter struct {
 	batch db.Batch
 }
@@ -134,7 +134,7 @@ func (b *batchAdapter) Inner() Batch {
 	return b
 }
 
-// iteratorAdapter wraps a luxfi/db.Iterator
+// iteratorAdapter wraps a luxfi/database.Iterator
 type iteratorAdapter struct {
 	iter db.Iterator
 }
@@ -177,7 +177,7 @@ func (w *writerDeleterAdapter) Delete(key []byte) error {
 	return w.w.Delete(key)
 }
 
-// Factory functions to create databases from luxfi/db implementations
+// Factory functions to create databases from luxfi/database implementations
 
 // NewMemDB creates a new in-memory database
 func NewMemDB() Database {

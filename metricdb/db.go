@@ -6,7 +6,7 @@ package metricdb
 import (
 	"time"
 
-	"github.com/luxfi/db"
+	"github.com/luxfi/database"
 	"github.com/prometheus/client_golang/prometheus"
 )
 

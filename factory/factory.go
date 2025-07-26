@@ -6,7 +6,7 @@ package factory
 import (
 	"fmt"
 
-	"github.com/luxfi/db"
+	"github.com/luxfi/database"
 	"github.com/prometheus/client_golang/prometheus"
 )
 

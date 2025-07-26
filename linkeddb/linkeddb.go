@@ -7,9 +7,9 @@ import (
 	"slices"
 	"sync"
 
-	"github.com/luxfi/db"
-	"github.com/luxfi/db/cache"
-	"github.com/luxfi/db/cache/lru"
+	"github.com/luxfi/database"
+	"github.com/luxfi/database/cache"
+	"github.com/luxfi/database/cache/lru"
 )
 
 const (

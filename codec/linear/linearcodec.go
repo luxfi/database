@@ -10,7 +10,7 @@ import (
 	"math"
 	"reflect"
 
-	"github.com/luxfi/db/codec"
+	"github.com/luxfi/database/codec"
 )
 
 var (

@@ -7,7 +7,7 @@
 package pebbledb
 
 import (
-	"github.com/luxfi/db"
+	"github.com/luxfi/database"
 )
 
 // New returns a clear error when PebbleDB is disabled.

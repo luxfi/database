@@ -9,11 +9,11 @@ import (
 
 	"google.golang.org/protobuf/types/known/emptypb"
 
-	"github.com/luxfi/db"
-	"github.com/luxfi/db/utils"
-	"github.com/luxfi/db/utils/set"
+	"github.com/luxfi/database"
+	"github.com/luxfi/database/utils"
+	"github.com/luxfi/database/utils/set"
 
-	rpcdbpb "github.com/luxfi/db/proto/pb/rpcdb"
+	rpcdbpb "github.com/luxfi/database/proto/pb/rpcdb"
 )
 
 var (

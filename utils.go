@@ -1,7 +1,7 @@
 // Copyright (C) 2020-2025, Lux Industries Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 
-package db
+package database
 
 const (
 	// If, when a batch is reset, the cap(batch)/len(batch) > MaxExcessCapacityFactor,

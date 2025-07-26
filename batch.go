@@ -5,7 +5,7 @@
 // database implementation. This was to allow us to use Geth code as is for the
 // EVM chain.
 
-package db
+package database
 
 import "slices"
 

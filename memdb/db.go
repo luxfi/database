@@ -7,7 +7,7 @@ import (
 	"context"
 	"sync"
 
-	database "github.com/luxfi/db"
+	database "github.com/luxfi/database"
 	"golang.org/x/exp/maps"
 )
 

@@ -15,9 +15,9 @@ import (
 	"golang.org/x/exp/maps"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/luxfi/db"
-	"github.com/luxfi/db/databasemock"
-	"github.com/luxfi/db/utils"
+	"github.com/luxfi/database"
+	"github.com/luxfi/database/databasemock"
+	"github.com/luxfi/database/utils"
 )
 
 var (

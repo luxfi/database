@@ -10,13 +10,13 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/luxfi/db/corruptabledb"
-	"github.com/luxfi/db/dbtest"
-	"github.com/luxfi/db/memdb"
+	"github.com/luxfi/database/corruptabledb"
+	"github.com/luxfi/database/dbtest"
+	"github.com/luxfi/database/memdb"
 	"github.com/luxfi/node/utils/logging"
 	"github.com/luxfi/node/vms/rpcchainvm/grpcutils"
 
-	rpcdbpb "github.com/luxfi/db/proto/pb/rpcdb"
+	rpcdbpb "github.com/luxfi/database/proto/pb/rpcdb"
 )
 
 type testDatabase struct {

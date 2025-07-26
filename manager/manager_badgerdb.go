@@ -7,8 +7,8 @@
 package manager
 
 import (
-	"github.com/luxfi/db"
-	"github.com/luxfi/db/badgerdb"
+	"github.com/luxfi/database"
+	"github.com/luxfi/database/badgerdb"
 	"github.com/prometheus/client_golang/prometheus"
 )
 

@@ -7,8 +7,8 @@
 package manager
 
 import (
-	"github.com/luxfi/db"
-	"github.com/luxfi/db/pebbledb"
+	"github.com/luxfi/database"
+	"github.com/luxfi/database/pebbledb"
 )
 
 func newPebbleDB(path string, cacheSize, handleCap int, namespace string, readOnly bool) (db.Database, error) {

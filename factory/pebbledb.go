@@ -7,8 +7,8 @@
 package factory
 
 import (
-	"github.com/luxfi/db"
-	"github.com/luxfi/db/pebbledb"
+	"github.com/luxfi/database"
+	"github.com/luxfi/database/pebbledb"
 )
 
 func newPebbleDB(config DatabaseConfig) (db.Database, error) {
