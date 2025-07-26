@@ -189,15 +189,15 @@ func (db *Database) NewBatch() database.Batch {
 }
 
 func (db *Database) NewIterator() database.Iterator {
-	return database.NewIteratorWithStartAndPrefix(nil, nil)
+	return db.NewIteratorWithStartAndPrefix(nil, nil)
 }
 
 func (db *Database) NewIteratorWithStart(start []byte) database.Iterator {
-	return database.NewIteratorWithStartAndPrefix(start, nil)
+	return db.NewIteratorWithStartAndPrefix(start, nil)
 }
 
 func (db *Database) NewIteratorWithPrefix(prefix []byte) database.Iterator {
-	return database.NewIteratorWithStartAndPrefix(nil, prefix)
+	return db.NewIteratorWithStartAndPrefix(nil, prefix)
 }
 
 func (db *Database) NewIteratorWithStartAndPrefix(

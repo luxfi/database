@@ -20,7 +20,7 @@ import (
 var errTest = errors.New("non-nil error")
 
 func newDB() *Database {
-	baseDB := memdatabase.New()
+	baseDB := memdb.New()
 	return New(baseDB, logging.NoLogger)
 }
 
@@ -50,21 +50,21 @@ func TestCorruption(t *testing.T) {
 	value := []byte("world")
 	tests := map[string]func(db database.Database) error{
 		"corrupted has": func(db database.Database) error {
-			_, err := database.Has(key)
+			_, err := db.Has(key)
 			return err
 		},
 		"corrupted get": func(db database.Database) error {
-			_, err := database.Get(key)
+			_, err := db.Get(key)
 			return err
 		},
 		"corrupted put": func(db database.Database) error {
-			return database.Put(key, value)
+			return db.Put(key, value)
 		},
 		"corrupted delete": func(db database.Database) error {
-			return database.Delete(key)
+			return db.Delete(key)
 		},
 		"corrupted batch": func(db database.Database) error {
-			corruptableBatch := database.NewBatch()
+			corruptableBatch := db.NewBatch()
 			require.NotNil(t, corruptableBatch)
 
 			require.NoError(t, corruptableBatch.Put(key, value))
@@ -72,7 +72,7 @@ func TestCorruption(t *testing.T) {
 			return corruptableBatch.Write()
 		},
 		"corrupted healthcheck": func(db database.Database) error {
-			err := database.HealthCheck()
+			err := db.HealthCheck()
 			return err
 		},
 	}

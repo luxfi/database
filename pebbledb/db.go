@@ -35,42 +35,42 @@ type Database struct {
 	writeOptions  *pebble.WriteOptions
 
 	// Metrics
-	compTimeMeter prometheus.Summary
-	compReadMeter prometheus.Counter
-	compWriteMeter prometheus.Counter
-	writeDelayNMeter prometheus.Summary
-	writeDelayMeter prometheus.Summary
-	diskSizeGauge prometheus.Gauge
-	diskReadMeter prometheus.Counter
-	diskWriteMeter prometheus.Counter
-	memCompGauge prometheus.Gauge
-	level0CompGauge prometheus.Gauge
+	compTimeMeter      prometheus.Summary
+	compReadMeter      prometheus.Counter
+	compWriteMeter     prometheus.Counter
+	writeDelayNMeter   prometheus.Summary
+	writeDelayMeter    prometheus.Summary
+	diskSizeGauge      prometheus.Gauge
+	diskReadMeter      prometheus.Counter
+	diskWriteMeter     prometheus.Counter
+	memCompGauge       prometheus.Gauge
+	level0CompGauge    prometheus.Gauge
 	nonlevel0CompGauge prometheus.Gauge
-	seekCompGauge prometheus.Gauge
+	seekCompGauge      prometheus.Gauge
 }
 
 // New returns a new PebbleDB database.
 func New(path string, cacheSize int, handles int, namespace string, readonly bool) (*Database, error) {
 	// Set default options
 	opts := &pebble.Options{
-		Cache:                     pebble.NewCache(int64(cacheSize * 1024 * 1024)),
-		DisableWAL:                false,
-		MaxOpenFiles:              handles,
-		MaxConcurrentCompactions:  runtime.NumCPU,
-		L0CompactionThreshold:     2,
-		L0StopWritesThreshold:     1000,
-		LBaseMaxBytes:             64 * 1024 * 1024, // 64 MB
-		MaxManifestFileSize:       128 * 1024 * 1024, // 128 MB
-		MemTableSize:              4 * 1024 * 1024,   // 4 MB
+		Cache:                       pebble.NewCache(int64(cacheSize * 1024 * 1024)),
+		DisableWAL:                  false,
+		MaxOpenFiles:                handles,
+		MaxConcurrentCompactions:    runtime.NumCPU,
+		L0CompactionThreshold:       2,
+		L0StopWritesThreshold:       1000,
+		LBaseMaxBytes:               64 * 1024 * 1024,  // 64 MB
+		MaxManifestFileSize:         128 * 1024 * 1024, // 128 MB
+		MemTableSize:                4 * 1024 * 1024,   // 4 MB
 		MemTableStopWritesThreshold: 2,
-		ReadOnly:                  readonly,
+		ReadOnly:                    readonly,
 	}
 
 	// Configure bloom filters
 	opts.Levels = make([]pebble.LevelOptions, 7)
 	for i := 0; i < len(opts.Levels); i++ {
-		opts.Levels[i].BlockSize = 32 * 1024           // 32 KB
-		opts.Levels[i].IndexBlockSize = 256 * 1024     // 256 KB
+		opts.Levels[i].BlockSize = 32 * 1024       // 32 KB
+		opts.Levels[i].IndexBlockSize = 256 * 1024 // 256 KB
 		opts.Levels[i].FilterPolicy = bloom.FilterPolicy(10)
 		opts.Levels[i].FilterType = pebble.TableFilter
 		if i > 0 {
@@ -138,6 +138,10 @@ func New(path string, cacheSize int, handles int, namespace string, readonly boo
 // Close stops the metrics collection, flushes any pending data to disk and closes
 // all io accesses to the underlying key-value store.
 func (d *Database) Close() error {
+	if d == nil {
+		return nil
+	}
+	
 	d.lock.Lock()
 	defer d.lock.Unlock()
 
@@ -228,8 +232,6 @@ func (d *Database) Delete(key []byte) error {
 
 	return updateError(d.pebbleDB.Delete(key, d.writeOptions))
 }
-
-
 
 // NewIterator creates a binary-alphabetical iterator over a subset
 // of database content with a particular key prefix, starting at a particular

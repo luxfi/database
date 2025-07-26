@@ -21,9 +21,9 @@ type IteratorError struct {
 	Err error
 }
 
-func (i *IteratorError) Next() bool   { return false }
-func (i *IteratorError) Error() error { return i.Err }
-func (i *IteratorError) Key() []byte  { return nil }
+func (i *IteratorError) Next() bool    { return false }
+func (i *IteratorError) Error() error  { return i.Err }
+func (i *IteratorError) Key() []byte   { return nil }
 func (i *IteratorError) Value() []byte { return nil }
 func (i *IteratorError) Release()      {}
 
@@ -125,7 +125,7 @@ func (db *Database) Delete(key []byte) error {
 // NewBatch implements db.Database.
 func (db *Database) NewBatch() database.Batch {
 	return &batch{
-		db: db,
+		db:  db,
 		ops: make([]op, 0),
 	}
 }
@@ -280,8 +280,6 @@ func (b *batch) Replay(w database.KeyValueWriterDeleter) error {
 func (b *batch) Inner() database.Batch {
 	return b
 }
-
-
 
 // AtomicClear clears the database atomically.
 func (db *Database) AtomicClear(newSize int) error {

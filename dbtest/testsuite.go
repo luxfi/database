@@ -29,7 +29,7 @@ import (
 
 // TestDatabaseSuite runs a suite of tests against a KeyValueStore database
 // implementation.
-func TestDatabaseSuite(t *testing.T, New func() ethdatabase.KeyValueStore) {
+func TestDatabaseSuite(t *testing.T, New func() ethdb.KeyValueStore) {
 	t.Run("Iterator", func(t *testing.T) {
 		tests := []struct {
 			content map[string]string
@@ -101,12 +101,12 @@ func TestDatabaseSuite(t *testing.T, New func() ethdatabase.KeyValueStore) {
 			// Create the key-value data store
 			db := New()
 			for key, val := range tt.content {
-				if err := database.Put([]byte(key), []byte(val)); err != nil {
+				if err := db.Put([]byte(key), []byte(val)); err != nil {
 					t.Fatalf("test %d: failed to insert item %s:%s into database: %v", i, key, val, err)
 				}
 			}
 			// Iterate over the database with the given configs and verify the results
-			it, idx := database.NewIterator([]byte(tt.prefix), []byte(tt.start)), 0
+			it, idx := db.NewIterator([]byte(tt.prefix), []byte(tt.start)), 0
 			for it.Next() {
 				if len(tt.order) <= idx {
 					t.Errorf("test %d: prefix=%q more items than expected: checking idx=%d (key %q), expecting len=%d", i, tt.prefix, idx, it.Key(), len(tt.order))
@@ -126,25 +126,25 @@ func TestDatabaseSuite(t *testing.T, New func() ethdatabase.KeyValueStore) {
 			if idx != len(tt.order) {
 				t.Errorf("test %d: iteration terminated prematurely: have %d, want %d", i, idx, len(tt.order))
 			}
-			database.Close()
+			db.Close()
 		}
 	})
 
 	t.Run("IteratorWith", func(t *testing.T) {
 		db := New()
-		defer database.Close()
+		defer db.Close()
 
 		keys := []string{"1", "2", "3", "4", "6", "10", "11", "12", "20", "21", "22"}
 		sort.Strings(keys) // 1, 10, 11, etc
 
 		for _, k := range keys {
-			if err := database.Put([]byte(k), nil); err != nil {
+			if err := db.Put([]byte(k), nil); err != nil {
 				t.Fatal(err)
 			}
 		}
 
 		{
-			it := database.NewIterator(nil, nil)
+			it := db.NewIterator(nil, nil)
 			got, want := iterateKeys(it), keys
 			if err := it.Error(); err != nil {
 				t.Fatal(err)
@@ -155,7 +155,7 @@ func TestDatabaseSuite(t *testing.T, New func() ethdatabase.KeyValueStore) {
 		}
 
 		{
-			it := database.NewIterator([]byte("1"), nil)
+			it := db.NewIterator([]byte("1"), nil)
 			got, want := iterateKeys(it), []string{"1", "10", "11", "12"}
 			if err := it.Error(); err != nil {
 				t.Fatal(err)
@@ -166,7 +166,7 @@ func TestDatabaseSuite(t *testing.T, New func() ethdatabase.KeyValueStore) {
 		}
 
 		{
-			it := database.NewIterator([]byte("5"), nil)
+			it := db.NewIterator([]byte("5"), nil)
 			got, want := iterateKeys(it), []string{}
 			if err := it.Error(); err != nil {
 				t.Fatal(err)
@@ -177,7 +177,7 @@ func TestDatabaseSuite(t *testing.T, New func() ethdatabase.KeyValueStore) {
 		}
 
 		{
-			it := database.NewIterator(nil, []byte("2"))
+			it := db.NewIterator(nil, []byte("2"))
 			got, want := iterateKeys(it), []string{"2", "20", "21", "22", "3", "4", "6"}
 			if err := it.Error(); err != nil {
 				t.Fatal(err)
@@ -188,7 +188,7 @@ func TestDatabaseSuite(t *testing.T, New func() ethdatabase.KeyValueStore) {
 		}
 
 		{
-			it := database.NewIterator(nil, []byte("5"))
+			it := db.NewIterator(nil, []byte("5"))
 			got, want := iterateKeys(it), []string{"6"}
 			if err := it.Error(); err != nil {
 				t.Fatal(err)
@@ -201,38 +201,38 @@ func TestDatabaseSuite(t *testing.T, New func() ethdatabase.KeyValueStore) {
 
 	t.Run("KeyValueOperations", func(t *testing.T) {
 		db := New()
-		defer database.Close()
+		defer db.Close()
 
 		key := []byte("foo")
 
-		if got, err := database.Has(key); err != nil {
+		if got, err := db.Has(key); err != nil {
 			t.Error(err)
 		} else if got {
 			t.Errorf("wrong value: %t", got)
 		}
 
 		value := []byte("hello world")
-		if err := database.Put(key, value); err != nil {
+		if err := db.Put(key, value); err != nil {
 			t.Error(err)
 		}
 
-		if got, err := database.Has(key); err != nil {
+		if got, err := db.Has(key); err != nil {
 			t.Error(err)
 		} else if !got {
 			t.Errorf("wrong value: %t", got)
 		}
 
-		if got, err := database.Get(key); err != nil {
+		if got, err := db.Get(key); err != nil {
 			t.Error(err)
 		} else if !bytes.Equal(got, value) {
 			t.Errorf("wrong value: %q", got)
 		}
 
-		if err := database.Delete(key); err != nil {
+		if err := db.Delete(key); err != nil {
 			t.Error(err)
 		}
 
-		if got, err := database.Has(key); err != nil {
+		if got, err := db.Has(key); err != nil {
 			t.Error(err)
 		} else if got {
 			t.Errorf("wrong value: %t", got)
@@ -241,16 +241,16 @@ func TestDatabaseSuite(t *testing.T, New func() ethdatabase.KeyValueStore) {
 
 	t.Run("Batch", func(t *testing.T) {
 		db := New()
-		defer database.Close()
+		defer db.Close()
 
-		b := database.NewBatch()
+		b := db.NewBatch()
 		for _, k := range []string{"1", "2", "3", "4"} {
 			if err := b.Put([]byte(k), nil); err != nil {
 				t.Fatal(err)
 			}
 		}
 
-		if has, err := database.Has([]byte("1")); err != nil {
+		if has, err := db.Has([]byte("1")); err != nil {
 			t.Fatal(err)
 		} else if has {
 			t.Error("db contains element before batch write")
@@ -261,7 +261,7 @@ func TestDatabaseSuite(t *testing.T, New func() ethdatabase.KeyValueStore) {
 		}
 
 		{
-			it := database.NewIterator(nil, nil)
+			it := db.NewIterator(nil, nil)
 			if got, want := iterateKeys(it), []string{"1", "2", "3", "4"}; !slices.Equal(got, want) {
 				t.Errorf("got: %s; want: %s", got, want)
 			}
@@ -285,7 +285,7 @@ func TestDatabaseSuite(t *testing.T, New func() ethdatabase.KeyValueStore) {
 		}
 
 		{
-			it := database.NewIterator(nil, nil)
+			it := db.NewIterator(nil, nil)
 			if got, want := iterateKeys(it), []string{"2", "3", "4", "5", "6"}; !slices.Equal(got, want) {
 				t.Errorf("got: %s; want: %s", got, want)
 			}
@@ -294,17 +294,17 @@ func TestDatabaseSuite(t *testing.T, New func() ethdatabase.KeyValueStore) {
 
 	t.Run("BatchReplay", func(t *testing.T) {
 		db := New()
-		defer database.Close()
+		defer db.Close()
 
 		want := []string{"1", "2", "3", "4"}
-		b := database.NewBatch()
+		b := db.NewBatch()
 		for _, k := range want {
 			if err := b.Put([]byte(k), nil); err != nil {
 				t.Fatal(err)
 			}
 		}
 
-		b2 := database.NewBatch()
+		b2 := db.NewBatch()
 		if err := b.Replay(b2); err != nil {
 			t.Fatal(err)
 		}
@@ -313,7 +313,7 @@ func TestDatabaseSuite(t *testing.T, New func() ethdatabase.KeyValueStore) {
 			t.Fatal(err)
 		}
 
-		it := database.NewIterator(nil, nil)
+		it := db.NewIterator(nil, nil)
 		if got := iterateKeys(it); !slices.Equal(got, want) {
 			t.Errorf("got: %s; want: %s", got, want)
 		}
@@ -321,22 +321,22 @@ func TestDatabaseSuite(t *testing.T, New func() ethdatabase.KeyValueStore) {
 
 	t.Run("OperationsAfterClose", func(t *testing.T) {
 		db := New()
-		database.Put([]byte("key"), []byte("value"))
-		database.Close()
-		if _, err := database.Get([]byte("key")); err == nil {
+		db.Put([]byte("key"), []byte("value"))
+		db.Close()
+		if _, err := db.Get([]byte("key")); err == nil {
 			t.Fatalf("expected error on Get after Close")
 		}
-		if _, err := database.Has([]byte("key")); err == nil {
+		if _, err := db.Has([]byte("key")); err == nil {
 			t.Fatalf("expected error on Get after Close")
 		}
-		if err := database.Put([]byte("key2"), []byte("value2")); err == nil {
+		if err := db.Put([]byte("key2"), []byte("value2")); err == nil {
 			t.Fatalf("expected error on Put after Close")
 		}
-		if err := database.Delete([]byte("key")); err == nil {
+		if err := db.Delete([]byte("key")); err == nil {
 			t.Fatalf("expected error on Delete after Close")
 		}
 
-		b := database.NewBatch()
+		b := db.NewBatch()
 		if err := b.Put([]byte("batchkey"), []byte("batchval")); err != nil {
 			t.Fatalf("expected no error on batch.Put after Close, got %v", err)
 		}
@@ -347,17 +347,17 @@ func TestDatabaseSuite(t *testing.T, New func() ethdatabase.KeyValueStore) {
 
 	t.Run("DeleteRange", func(t *testing.T) {
 		db := New()
-		defer database.Close()
+		defer db.Close()
 
 		addRange := func(start, stop int) {
 			for i := start; i <= stop; i++ {
-				database.Put([]byte(strconv.Itoa(i)), nil)
+				db.Put([]byte(strconv.Itoa(i)), nil)
 			}
 		}
 
 		checkRange := func(start, stop int, exp bool) {
 			for i := start; i <= stop; i++ {
-				has, _ := database.Has([]byte(strconv.Itoa(i)))
+				has, _ := db.Has([]byte(strconv.Itoa(i)))
 				if has && !exp {
 					t.Fatalf("unexpected key %d", i)
 				}
@@ -368,19 +368,19 @@ func TestDatabaseSuite(t *testing.T, New func() ethdatabase.KeyValueStore) {
 		}
 
 		addRange(1, 9)
-		database.DeleteRange([]byte("9"), []byte("1"))
+		db.DeleteRange([]byte("9"), []byte("1"))
 		checkRange(1, 9, true)
-		database.DeleteRange([]byte("5"), []byte("5"))
+		db.DeleteRange([]byte("5"), []byte("5"))
 		checkRange(1, 9, true)
-		database.DeleteRange([]byte("5"), []byte("50"))
+		db.DeleteRange([]byte("5"), []byte("50"))
 		checkRange(1, 4, true)
 		checkRange(5, 5, false)
 		checkRange(6, 9, true)
-		database.DeleteRange([]byte(""), []byte("a"))
+		db.DeleteRange([]byte(""), []byte("a"))
 		checkRange(1, 9, false)
 
 		addRange(1, 999)
-		database.DeleteRange([]byte("12345"), []byte("54321"))
+		db.DeleteRange([]byte("12345"), []byte("54321"))
 		checkRange(1, 1, true)
 		checkRange(2, 5, false)
 		checkRange(6, 12, true)
@@ -390,7 +390,7 @@ func TestDatabaseSuite(t *testing.T, New func() ethdatabase.KeyValueStore) {
 		checkRange(544, 999, true)
 
 		addRange(1, 999)
-		database.DeleteRange([]byte("3"), []byte("7"))
+		db.DeleteRange([]byte("3"), []byte("7"))
 		checkRange(1, 2, true)
 		checkRange(3, 6, false)
 		checkRange(7, 29, true)
@@ -399,22 +399,22 @@ func TestDatabaseSuite(t *testing.T, New func() ethdatabase.KeyValueStore) {
 		checkRange(300, 699, false)
 		checkRange(700, 999, true)
 
-		database.DeleteRange([]byte(""), []byte("a"))
+		db.DeleteRange([]byte(""), []byte("a"))
 		checkRange(1, 999, false)
 
 		addRange(1, 999)
-		database.DeleteRange(nil, nil)
+		db.DeleteRange(nil, nil)
 		checkRange(1, 999, false)
 	})
 
 	t.Run("BatchDeleteRange", func(t *testing.T) {
 		db := New()
-		defer database.Close()
+		defer db.Close()
 
 		// Helper to add keys
 		addKeys := func(start, stop int) {
 			for i := start; i <= stop; i++ {
-				if err := database.Put([]byte(strconv.Itoa(i)), []byte("val-"+strconv.Itoa(i))); err != nil {
+				if err := db.Put([]byte(strconv.Itoa(i)), []byte("val-"+strconv.Itoa(i))); err != nil {
 					t.Fatal(err)
 				}
 			}
@@ -424,7 +424,7 @@ func TestDatabaseSuite(t *testing.T, New func() ethdatabase.KeyValueStore) {
 		checkKeys := func(start, stop int, shouldExist bool) {
 			for i := start; i <= stop; i++ {
 				key := []byte(strconv.Itoa(i))
-				has, err := database.Has(key)
+				has, err := db.Has(key)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -442,7 +442,7 @@ func TestDatabaseSuite(t *testing.T, New func() ethdatabase.KeyValueStore) {
 		addKeys(1, 10)
 		checkKeys(1, 10, true)
 
-		batch := database.NewBatch()
+		batch := db.NewBatch()
 		if err := batch.DeleteRange([]byte("3"), []byte("8")); err != nil {
 			t.Fatal(err)
 		}
@@ -460,7 +460,7 @@ func TestDatabaseSuite(t *testing.T, New func() ethdatabase.KeyValueStore) {
 
 		// Test 2: Delete range with special markers
 		addKeys(3, 7)
-		batch = database.NewBatch()
+		batch = db.NewBatch()
 		if err := batch.DeleteRange(nil, nil); err != nil {
 			t.Fatal(err)
 		}
@@ -475,7 +475,7 @@ func TestDatabaseSuite(t *testing.T, New func() ethdatabase.KeyValueStore) {
 		checkKeys(1, 10, true)
 
 		// Create a new batch with multiple operations
-		batch = database.NewBatch()
+		batch = db.NewBatch()
 		if err := batch.Put([]byte("5"), []byte("new-val-5")); err != nil {
 			t.Fatal(err)
 		}
@@ -493,7 +493,7 @@ func TestDatabaseSuite(t *testing.T, New func() ethdatabase.KeyValueStore) {
 		checkKeys(1, 2, false)
 
 		// Key 3 should exist (exclusive of end)
-		has, err := database.Has([]byte("3"))
+		has, err := db.Has([]byte("3"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -502,7 +502,7 @@ func TestDatabaseSuite(t *testing.T, New func() ethdatabase.KeyValueStore) {
 		}
 
 		// Key 5 should have a new value
-		val, err := database.Get([]byte("5"))
+		val, err := db.Get([]byte("5"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -511,7 +511,7 @@ func TestDatabaseSuite(t *testing.T, New func() ethdatabase.KeyValueStore) {
 		}
 
 		// Key 9 should be deleted
-		has, err = database.Has([]byte("9"))
+		has, err = db.Has([]byte("9"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -536,7 +536,7 @@ func TestDatabaseSuite(t *testing.T, New func() ethdatabase.KeyValueStore) {
 		}
 
 		// Key 8 should be deleted
-		has, err = database.Has([]byte("8"))
+		has, err = db.Has([]byte("8"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -548,7 +548,7 @@ func TestDatabaseSuite(t *testing.T, New func() ethdatabase.KeyValueStore) {
 		checkKeys(3, 7, true)
 
 		// Key 10 should be deleted
-		has, err = database.Has([]byte("10"))
+		has, err = db.Has([]byte("10"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -557,7 +557,7 @@ func TestDatabaseSuite(t *testing.T, New func() ethdatabase.KeyValueStore) {
 		}
 
 		// Test 5: Empty range
-		batch = database.NewBatch()
+		batch = db.NewBatch()
 		if err := batch.DeleteRange([]byte("100"), []byte("100")); err != nil {
 			t.Fatal(err)
 		}
@@ -570,7 +570,7 @@ func TestDatabaseSuite(t *testing.T, New func() ethdatabase.KeyValueStore) {
 		// Test 6: Test entire keyspace deletion
 		// First clear any existing keys
 		for i := 1; i <= 100; i++ {
-			database.Delete([]byte(strconv.Itoa(i)))
+			db.Delete([]byte(strconv.Itoa(i)))
 		}
 
 		// Then add some fresh test keys
@@ -579,7 +579,7 @@ func TestDatabaseSuite(t *testing.T, New func() ethdatabase.KeyValueStore) {
 		// Verify keys exist before deletion
 		checkKeys(50, 60, true)
 
-		batch = database.NewBatch()
+		batch = db.NewBatch()
 		if err := batch.DeleteRange([]byte(""), []byte("z")); err != nil {
 			t.Fatal(err)
 		}
@@ -591,7 +591,7 @@ func TestDatabaseSuite(t *testing.T, New func() ethdatabase.KeyValueStore) {
 
 		// Test 7: overlapping range deletion
 		addKeys(50, 60)
-		batch = database.NewBatch()
+		batch = db.NewBatch()
 		if err := batch.DeleteRange([]byte("50"), []byte("55")); err != nil {
 			t.Fatal(err)
 		}
@@ -607,24 +607,24 @@ func TestDatabaseSuite(t *testing.T, New func() ethdatabase.KeyValueStore) {
 
 	t.Run("BatchReplayWithDeleteRange", func(t *testing.T) {
 		db := New()
-		defer database.Close()
+		defer db.Close()
 
 		// Setup some initial data
 		for i := 1; i <= 10; i++ {
-			if err := database.Put([]byte(strconv.Itoa(i)), []byte("val-"+strconv.Itoa(i))); err != nil {
+			if err := db.Put([]byte(strconv.Itoa(i)), []byte("val-"+strconv.Itoa(i))); err != nil {
 				t.Fatal(err)
 			}
 		}
 
 		// Create batch with multiple operations including DeleteRange
-		batch1 := database.NewBatch()
+		batch1 := db.NewBatch()
 		batch1.Put([]byte("new-key-1"), []byte("new-val-1"))
 		batch1.DeleteRange([]byte("3"), []byte("7")) // Should delete keys 3-6 but not 7
 		batch1.Delete([]byte("8"))
 		batch1.Put([]byte("new-key-2"), []byte("new-val-2"))
 
 		// Create a second batch to replay into
-		batch2 := database.NewBatch()
+		batch2 := db.NewBatch()
 		if err := batch1.Replay(batch2); err != nil {
 			t.Fatal(err)
 		}
@@ -637,7 +637,7 @@ func TestDatabaseSuite(t *testing.T, New func() ethdatabase.KeyValueStore) {
 		// Verify results
 		// Original keys 3-6 should be deleted (inclusive of start, exclusive of end)
 		for i := 3; i <= 6; i++ {
-			has, err := database.Has([]byte(strconv.Itoa(i)))
+			has, err := db.Has([]byte(strconv.Itoa(i)))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -647,7 +647,7 @@ func TestDatabaseSuite(t *testing.T, New func() ethdatabase.KeyValueStore) {
 		}
 
 		// Key 7 should NOT be deleted (exclusive of end)
-		has, err := database.Has([]byte("7"))
+		has, err := db.Has([]byte("7"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -656,7 +656,7 @@ func TestDatabaseSuite(t *testing.T, New func() ethdatabase.KeyValueStore) {
 		}
 
 		// Key 8 should be deleted
-		has, err = database.Has([]byte("8"))
+		has, err = db.Has([]byte("8"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -666,7 +666,7 @@ func TestDatabaseSuite(t *testing.T, New func() ethdatabase.KeyValueStore) {
 
 		// New keys should be added
 		for _, key := range []string{"new-key-1", "new-key-2"} {
-			has, err := database.Has([]byte(key))
+			has, err := db.Has([]byte(key))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -676,7 +676,7 @@ func TestDatabaseSuite(t *testing.T, New func() ethdatabase.KeyValueStore) {
 		}
 
 		// Create a third batch for direct replay to database
-		batch3 := database.NewBatch()
+		batch3 := db.NewBatch()
 		batch3.DeleteRange([]byte("1"), []byte("3")) // Should delete keys 1-2 but not 3
 
 		// Replay directly to the database
@@ -686,7 +686,7 @@ func TestDatabaseSuite(t *testing.T, New func() ethdatabase.KeyValueStore) {
 
 		// Verify keys 1-2 are now deleted
 		for i := 1; i <= 2; i++ {
-			has, err := database.Has([]byte(strconv.Itoa(i)))
+			has, err := db.Has([]byte(strconv.Itoa(i)))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -696,7 +696,7 @@ func TestDatabaseSuite(t *testing.T, New func() ethdatabase.KeyValueStore) {
 		}
 
 		// Verify key 3 is NOT deleted (since it's exclusive of end)
-		has, err = database.Has([]byte("3"))
+		has, err = db.Has([]byte("3"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -708,7 +708,7 @@ func TestDatabaseSuite(t *testing.T, New func() ethdatabase.KeyValueStore) {
 
 // BenchDatabaseSuite runs a suite of benchmarks against a KeyValueStore database
 // implementation.
-func BenchDatabaseSuite(b *testing.B, New func() ethdatabase.KeyValueStore) {
+func BenchDatabaseSuite(b *testing.B, New func() ethdb.KeyValueStore) {
 	var (
 		keys, vals   = makeDataset(1_000_000, 32, 32, false)
 		sKeys, sVals = makeDataset(1_000_000, 32, 32, true)
@@ -720,10 +720,10 @@ func BenchDatabaseSuite(b *testing.B, New func() ethdatabase.KeyValueStore) {
 			b.ReportAllocs()
 
 			db := New()
-			defer database.Close()
+			defer db.Close()
 
 			for i := 0; i < len(keys); i++ {
-				database.Put(keys[i], vals[i])
+				db.Put(keys[i], vals[i])
 			}
 		}
 		b.Run("WriteSorted", func(b *testing.B) {
@@ -736,16 +736,16 @@ func BenchDatabaseSuite(b *testing.B, New func() ethdatabase.KeyValueStore) {
 	b.Run("Read", func(b *testing.B) {
 		benchRead := func(b *testing.B, keys, vals [][]byte) {
 			db := New()
-			defer database.Close()
+			defer db.Close()
 
 			for i := 0; i < len(keys); i++ {
-				database.Put(keys[i], vals[i])
+				db.Put(keys[i], vals[i])
 			}
 			b.ResetTimer()
 			b.ReportAllocs()
 
 			for i := 0; i < len(keys); i++ {
-				database.Get(keys[i])
+				db.Get(keys[i])
 			}
 		}
 		b.Run("ReadSorted", func(b *testing.B) {
@@ -758,15 +758,15 @@ func BenchDatabaseSuite(b *testing.B, New func() ethdatabase.KeyValueStore) {
 	b.Run("Iteration", func(b *testing.B) {
 		benchIteration := func(b *testing.B, keys, vals [][]byte) {
 			db := New()
-			defer database.Close()
+			defer db.Close()
 
 			for i := 0; i < len(keys); i++ {
-				database.Put(keys[i], vals[i])
+				db.Put(keys[i], vals[i])
 			}
 			b.ResetTimer()
 			b.ReportAllocs()
 
-			it := database.NewIterator(nil, nil)
+			it := db.NewIterator(nil, nil)
 			for it.Next() {
 			}
 			it.Release()
@@ -784,9 +784,9 @@ func BenchDatabaseSuite(b *testing.B, New func() ethdatabase.KeyValueStore) {
 			b.ReportAllocs()
 
 			db := New()
-			defer database.Close()
+			defer db.Close()
 
-			batch := database.NewBatch()
+			batch := db.NewBatch()
 			for i := 0; i < len(keys); i++ {
 				batch.Put(keys[i], vals[i])
 			}
@@ -802,15 +802,15 @@ func BenchDatabaseSuite(b *testing.B, New func() ethdatabase.KeyValueStore) {
 	b.Run("DeleteRange", func(b *testing.B) {
 		benchDeleteRange := func(b *testing.B, count int) {
 			db := New()
-			defer database.Close()
+			defer db.Close()
 
 			for i := 0; i < count; i++ {
-				database.Put([]byte(strconv.Itoa(i)), nil)
+				db.Put([]byte(strconv.Itoa(i)), nil)
 			}
 			b.ResetTimer()
 			b.ReportAllocs()
 
-			database.DeleteRange([]byte("0"), []byte("999999999"))
+			db.DeleteRange([]byte("0"), []byte("999999999"))
 		}
 		b.Run("DeleteRange100", func(b *testing.B) {
 			benchDeleteRange(b, 100)
@@ -825,18 +825,18 @@ func BenchDatabaseSuite(b *testing.B, New func() ethdatabase.KeyValueStore) {
 	b.Run("BatchDeleteRange", func(b *testing.B) {
 		benchBatchDeleteRange := func(b *testing.B, count int) {
 			db := New()
-			defer database.Close()
+			defer db.Close()
 
 			// Prepare data
 			for i := 0; i < count; i++ {
-				database.Put([]byte(strconv.Itoa(i)), nil)
+				db.Put([]byte(strconv.Itoa(i)), nil)
 			}
 
 			b.ResetTimer()
 			b.ReportAllocs()
 
 			// Create batch and delete range
-			batch := database.NewBatch()
+			batch := db.NewBatch()
 			batch.DeleteRange([]byte("0"), []byte("999999999"))
 			batch.Write()
 		}
@@ -855,18 +855,18 @@ func BenchDatabaseSuite(b *testing.B, New func() ethdatabase.KeyValueStore) {
 	b.Run("BatchMixedOps", func(b *testing.B) {
 		benchBatchMixedOps := func(b *testing.B, count int) {
 			db := New()
-			defer database.Close()
+			defer db.Close()
 
 			// Prepare initial data
 			for i := 0; i < count; i++ {
-				database.Put([]byte(strconv.Itoa(i)), []byte("val"))
+				db.Put([]byte(strconv.Itoa(i)), []byte("val"))
 			}
 
 			b.ResetTimer()
 			b.ReportAllocs()
 
 			// Create batch with mixed operations
-			batch := database.NewBatch()
+			batch := db.NewBatch()
 
 			// Add some new keys
 			for i := 0; i < count/10; i++ {
@@ -899,7 +899,7 @@ func BenchDatabaseSuite(b *testing.B, New func() ethdatabase.KeyValueStore) {
 	})
 }
 
-func iterateKeys(it ethdatabase.Iterator) []string {
+func iterateKeys(it ethdb.Iterator) []string {
 	keys := []string{}
 	for it.Next() {
 		keys = append(keys, string(it.Key()))

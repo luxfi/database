@@ -78,17 +78,17 @@ func (it *iterator) Next() bool {
 	if it.err != nil {
 		return false
 	}
-	
+
 	// Check if database is closed
 	it.db.lock.RLock()
 	closed := it.db.db == nil
 	it.db.lock.RUnlock()
-	
+
 	if closed {
 		it.err = database.ErrClosed
 		return false
 	}
-	
+
 	it.idx++
 	return it.idx < len(it.keys)
 }

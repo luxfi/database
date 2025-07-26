@@ -103,31 +103,31 @@ func New(namespace string, db database.Database, registerer prometheus.Registere
 
 // Close implements the database.Database interface.
 func (mdb *Database) Close() error {
-	return mdatabase.database.Close()
+	return mdb.db.Close()
 }
 
 // HealthCheck implements the database.Database interface.
 func (mdb *Database) HealthCheck() error {
-	return mdatabase.database.HealthCheck()
+	return mdb.db.HealthCheck()
 }
 
 // Has implements the database.Database interface.
 func (mdb *Database) Has(key []byte) (bool, error) {
 	start := time.Now()
-	has, err := mdatabase.database.Has(key)
-	mdatabase.readDuration.Observe(time.Since(start).Seconds())
-	mdatabase.readCount.Inc()
+	has, err := mdb.db.Has(key)
+	mdb.readDuration.Observe(time.Since(start).Seconds())
+	mdb.readCount.Inc()
 	return has, err
 }
 
 // Get implements the database.Database interface.
 func (mdb *Database) Get(key []byte) ([]byte, error) {
 	start := time.Now()
-	value, err := mdatabase.database.Get(key)
-	mdatabase.readDuration.Observe(time.Since(start).Seconds())
-	mdatabase.readCount.Inc()
+	value, err := mdb.db.Get(key)
+	mdb.readDuration.Observe(time.Since(start).Seconds())
+	mdb.readCount.Inc()
 	if err == nil {
-		mdatabase.readSize.Observe(float64(len(value)))
+		mdb.readSize.Observe(float64(len(value)))
 	}
 	return value, err
 }
@@ -135,56 +135,56 @@ func (mdb *Database) Get(key []byte) ([]byte, error) {
 // Put implements the database.Database interface.
 func (mdb *Database) Put(key []byte, value []byte) error {
 	start := time.Now()
-	err := mdatabase.database.Put(key, value)
-	mdatabase.writeDuration.Observe(time.Since(start).Seconds())
-	mdatabase.writeCount.Inc()
-	mdatabase.writeSize.Observe(float64(len(key) + len(value)))
+	err := mdb.db.Put(key, value)
+	mdb.writeDuration.Observe(time.Since(start).Seconds())
+	mdb.writeCount.Inc()
+	mdb.writeSize.Observe(float64(len(key) + len(value)))
 	return err
 }
 
 // Delete implements the database.Database interface.
 func (mdb *Database) Delete(key []byte) error {
 	start := time.Now()
-	err := mdatabase.database.Delete(key)
-	mdatabase.writeDuration.Observe(time.Since(start).Seconds())
-	mdatabase.deleteCount.Inc()
+	err := mdb.db.Delete(key)
+	mdb.writeDuration.Observe(time.Since(start).Seconds())
+	mdb.deleteCount.Inc()
 	return err
 }
 
 // NewBatch implements the database.Database interface.
 func (mdb *Database) NewBatch() database.Batch {
 	return &batch{
-		Batch:         mdatabase.database.NewBatch(),
-		writeDuration: mdatabase.writeDuration,
-		writeSize:     mdatabase.writeSize,
-		writeCount:    mdatabase.writeCount,
-		deleteCount:   mdatabase.deleteCount,
+		Batch:         mdb.db.NewBatch(),
+		writeDuration: mdb.writeDuration,
+		writeSize:     mdb.writeSize,
+		writeCount:    mdb.writeCount,
+		deleteCount:   mdb.deleteCount,
 	}
 }
 
 // NewIterator implements the database.Database interface.
 func (mdb *Database) NewIterator() database.Iterator {
-	return mdatabase.database.NewIterator()
+	return mdb.db.NewIterator()
 }
 
 // NewIteratorWithStart implements the database.Database interface.
 func (mdb *Database) NewIteratorWithStart(start []byte) database.Iterator {
-	return mdatabase.database.NewIteratorWithStart(start)
+	return mdb.db.NewIteratorWithStart(start)
 }
 
 // NewIteratorWithPrefix implements the database.Database interface.
 func (mdb *Database) NewIteratorWithPrefix(prefix []byte) database.Iterator {
-	return mdatabase.database.NewIteratorWithPrefix(prefix)
+	return mdb.db.NewIteratorWithPrefix(prefix)
 }
 
 // NewIteratorWithStartAndPrefix implements the database.Database interface.
 func (mdb *Database) NewIteratorWithStartAndPrefix(start, prefix []byte) database.Iterator {
-	return mdatabase.database.NewIteratorWithStartAndPrefix(start, prefix)
+	return mdb.db.NewIteratorWithStartAndPrefix(start, prefix)
 }
 
 // Compact implements the database.Database interface.
 func (mdb *Database) Compact(start []byte, limit []byte) error {
-	return mdatabase.database.Compact(start, limit)
+	return mdb.db.Compact(start, limit)
 }
 
 // batch wraps a database.Batch to record metrics.

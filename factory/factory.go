@@ -6,17 +6,17 @@ package factory
 import (
 	"fmt"
 
-	"github.com/luxfi/database"
+	db "github.com/luxfi/database"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
 // DatabaseConfig contains all the parameters necessary to create a database
 type DatabaseConfig struct {
-	Name        string
-	Dir         string
-	Config      []byte
-	Type        string // "leveldb", "pebbledb", "badgerdb", "memdb"
-	MetricsReg  prometheus.Registerer
+	Name       string
+	Dir        string
+	Config     []byte
+	Type       string // "leveldb", "pebbledb", "badgerdb", "memdb"
+	MetricsReg prometheus.Registerer
 }
 
 // New creates a new database based on the config

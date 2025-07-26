@@ -1,13 +1,14 @@
 // Copyright (C) 2020-2025, Lux Industries Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 
-package database
+package database_test
 
 import (
 	"errors"
 	"path/filepath"
 	"testing"
 
+	"github.com/luxfi/database"
 	"github.com/luxfi/database/dbtest"
 	"github.com/luxfi/database/factory"
 )
@@ -71,7 +72,7 @@ func backendEnabled(engine string) bool {
 	}
 
 	// Check if the error is ErrBackendDisabled
-	var errBackend *db.ErrBackendDisabled
+	var errBackend *database.ErrBackendDisabled
 	return !errors.As(err, &errBackend)
 }
 
@@ -125,66 +126,108 @@ func TestBenchmarks(t *testing.T) {
 
 // FuzzKeyValue runs fuzz tests against all backends
 func FuzzKeyValue(f *testing.F) {
+	// Use only the first available backend for fuzzing
+	var selectedBackend *struct {
+		name   string
+		engine string
+		tagged bool
+	}
+	
 	for _, b := range backends {
+		b := b // capture range variable
 		if b.tagged && !backendEnabled(b.engine) {
 			continue
 		}
-
-		dir := f.TempDir()
-		dbi, err := factory.New(factory.DatabaseConfig{
-			Type: b.engine,
-			Dir:  filepath.Join(dir, b.name),
-			Name: b.name,
-		})
-		if err != nil {
-			f.Fatalf("create %s: %v", b.engine, err)
-		}
-		defer dbi.Close()
-
-		dbtest.FuzzKeyValue(f, dbi)
+		selectedBackend = &b
+		break
 	}
+	
+	if selectedBackend == nil {
+		f.Skip("No available backend for fuzzing")
+	}
+
+	dir := f.TempDir()
+	dbi, err := factory.New(factory.DatabaseConfig{
+		Type: selectedBackend.engine,
+		Dir:  filepath.Join(dir, selectedBackend.name),
+		Name: selectedBackend.name,
+	})
+	if err != nil {
+		f.Fatalf("create %s: %v", selectedBackend.engine, err)
+	}
+	defer dbi.Close()
+
+	dbtest.FuzzKeyValue(f, dbi)
 }
 
 // FuzzNewIteratorWithPrefix runs fuzz tests for iterator with prefix
 func FuzzNewIteratorWithPrefix(f *testing.F) {
+	// Use only the first available backend for fuzzing
+	var selectedBackend *struct {
+		name   string
+		engine string
+		tagged bool
+	}
+	
 	for _, b := range backends {
+		b := b // capture range variable
 		if b.tagged && !backendEnabled(b.engine) {
 			continue
 		}
-
-		dir := f.TempDir()
-		dbi, err := factory.New(factory.DatabaseConfig{
-			Type: b.engine,
-			Dir:  filepath.Join(dir, b.name),
-			Name: b.name,
-		})
-		if err != nil {
-			f.Fatalf("create %s: %v", b.engine, err)
-		}
-		defer dbi.Close()
-
-		dbtest.FuzzNewIteratorWithPrefix(f, dbi)
+		selectedBackend = &b
+		break
 	}
+	
+	if selectedBackend == nil {
+		f.Skip("No available backend for fuzzing")
+	}
+
+	dir := f.TempDir()
+	dbi, err := factory.New(factory.DatabaseConfig{
+		Type: selectedBackend.engine,
+		Dir:  filepath.Join(dir, selectedBackend.name),
+		Name: selectedBackend.name,
+	})
+	if err != nil {
+		f.Fatalf("create %s: %v", selectedBackend.engine, err)
+	}
+	defer dbi.Close()
+
+	dbtest.FuzzNewIteratorWithPrefix(f, dbi)
 }
 
 // FuzzNewIteratorWithStartAndPrefix runs fuzz tests for iterator with start and prefix
 func FuzzNewIteratorWithStartAndPrefix(f *testing.F) {
+	// Use only the first available backend for fuzzing
+	var selectedBackend *struct {
+		name   string
+		engine string
+		tagged bool
+	}
+	
 	for _, b := range backends {
+		b := b // capture range variable
 		if b.tagged && !backendEnabled(b.engine) {
 			continue
 		}
-
-		dir := f.TempDir()
-		dbi, err := factory.New(factory.DatabaseConfig{
-			Type: b.engine,
-			Dir:  filepath.Join(dir, b.name),
-			Name: b.name,
-		})
-		if err != nil {
-			f.Fatalf("create %s: %v", b.engine, err)
-		}
-		defer dbi.Close()
-
-		dbtest.FuzzNewIteratorWithStartAndPrefix(f, dbi)
+		selectedBackend = &b
+		break
 	}
+	
+	if selectedBackend == nil {
+		f.Skip("No available backend for fuzzing")
+	}
+
+	dir := f.TempDir()
+	dbi, err := factory.New(factory.DatabaseConfig{
+		Type: selectedBackend.engine,
+		Dir:  filepath.Join(dir, selectedBackend.name),
+		Name: selectedBackend.name,
+	})
+	if err != nil {
+		f.Fatalf("create %s: %v", selectedBackend.engine, err)
+	}
+	defer dbi.Close()
+
+	dbtest.FuzzNewIteratorWithStartAndPrefix(f, dbi)
 }

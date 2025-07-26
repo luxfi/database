@@ -4,7 +4,7 @@
 package factory
 
 import (
-	"github.com/luxfi/database"
+	db "github.com/luxfi/database"
 	"github.com/luxfi/database/leveldb"
 )
 

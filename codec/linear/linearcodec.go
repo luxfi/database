@@ -14,12 +14,12 @@ import (
 )
 
 var (
-	ErrUnknownVersion    = errors.New("unknown codec version")
-	ErrMarshalNil        = errors.New("can't marshal nil")
-	ErrUnmarshalNil      = errors.New("can't unmarshal nil")
-	ErrUnexpectedType    = errors.New("unexpected type")
-	ErrDoesNotImplement  = errors.New("type does not implement interface")
-	ErrUnexportedField   = errors.New("unexported field")
+	ErrUnknownVersion      = errors.New("unknown codec version")
+	ErrMarshalNil          = errors.New("can't marshal nil")
+	ErrUnmarshalNil        = errors.New("can't unmarshal nil")
+	ErrUnexpectedType      = errors.New("unexpected type")
+	ErrDoesNotImplement    = errors.New("type does not implement interface")
+	ErrUnexportedField     = errors.New("unexported field")
 	ErrMaxSliceLenExceeded = errors.New("max slice length exceeded")
 )
 
@@ -65,11 +65,11 @@ func (m *Manager) Marshal(version uint16, source interface{}) ([]byte, error) {
 
 	buf := make([]byte, size+2) // +2 for version
 	binary.BigEndian.PutUint16(buf, version)
-	
+
 	if err := codec.MarshalInto(source, buf[2:]); err != nil {
 		return nil, err
 	}
-	
+
 	return buf, nil
 }
 
@@ -98,12 +98,12 @@ func (m *Manager) Size(version uint16, source interface{}) (int, error) {
 	if !exists {
 		return 0, fmt.Errorf("%w: %d", ErrUnknownVersion, version)
 	}
-	
+
 	size, err := codec.Size(source)
 	if err != nil {
 		return 0, err
 	}
-	
+
 	return size + 2, nil // +2 for version
 }
 
@@ -121,7 +121,7 @@ func (c *LinearCodec) Unmarshal(source []byte, destination interface{}) error {
 	if destPtr.Kind() != reflect.Ptr {
 		return fmt.Errorf("%w: expected pointer, got %T", ErrUnexpectedType, destination)
 	}
-	
+
 	_, err := unmarshal(source, destPtr.Elem())
 	return err
 }
@@ -141,23 +141,23 @@ func marshal(v reflect.Value, dest []byte) error {
 			dest[0] = 0
 		}
 		return nil
-		
+
 	case reflect.Uint8:
 		dest[0] = byte(v.Uint())
 		return nil
-		
+
 	case reflect.Uint16:
 		binary.BigEndian.PutUint16(dest, uint16(v.Uint()))
 		return nil
-		
+
 	case reflect.Uint32:
 		binary.BigEndian.PutUint32(dest, uint32(v.Uint()))
 		return nil
-		
+
 	case reflect.Uint64:
 		binary.BigEndian.PutUint64(dest, v.Uint())
 		return nil
-		
+
 	case reflect.Slice:
 		if v.Type().Elem().Kind() == reflect.Uint8 {
 			// []byte - encode length then bytes
@@ -166,37 +166,37 @@ func marshal(v reflect.Value, dest []byte) error {
 			return nil
 		}
 		return fmt.Errorf("%w: unsupported slice type %v", ErrUnexpectedType, v.Type())
-		
+
 	case reflect.Struct:
 		offset := 0
 		for i := 0; i < v.NumField(); i++ {
 			field := v.Field(i)
 			fieldType := v.Type().Field(i)
-			
+
 			// Skip unexported fields
 			if !fieldType.IsExported() {
 				continue
 			}
-			
+
 			// Check for serialize tag
 			tag := fieldType.Tag.Get("serialize")
 			if tag == "-" || tag == "false" {
 				continue
 			}
-			
+
 			size, err := calcSize(field)
 			if err != nil {
 				return err
 			}
-			
+
 			if err := marshal(field, dest[offset:]); err != nil {
 				return err
 			}
-			
+
 			offset += size
 		}
 		return nil
-		
+
 	default:
 		return fmt.Errorf("%w: cannot marshal %v", ErrUnexpectedType, v.Kind())
 	}
@@ -211,35 +211,35 @@ func unmarshal(src []byte, v reflect.Value) (int, error) {
 		}
 		v.SetBool(src[0] != 0)
 		return 1, nil
-		
+
 	case reflect.Uint8:
 		if len(src) < 1 {
 			return 0, errors.New("insufficient bytes for uint8")
 		}
 		v.SetUint(uint64(src[0]))
 		return 1, nil
-		
+
 	case reflect.Uint16:
 		if len(src) < 2 {
 			return 0, errors.New("insufficient bytes for uint16")
 		}
 		v.SetUint(uint64(binary.BigEndian.Uint16(src)))
 		return 2, nil
-		
+
 	case reflect.Uint32:
 		if len(src) < 4 {
 			return 0, errors.New("insufficient bytes for uint32")
 		}
 		v.SetUint(uint64(binary.BigEndian.Uint32(src)))
 		return 4, nil
-		
+
 	case reflect.Uint64:
 		if len(src) < 8 {
 			return 0, errors.New("insufficient bytes for uint64")
 		}
 		v.SetUint(binary.BigEndian.Uint64(src))
 		return 8, nil
-		
+
 	case reflect.Slice:
 		if v.Type().Elem().Kind() == reflect.Uint8 {
 			// []byte - decode length then bytes
@@ -257,33 +257,33 @@ func unmarshal(src []byte, v reflect.Value) (int, error) {
 			return 4 + int(length), nil
 		}
 		return 0, fmt.Errorf("%w: unsupported slice type %v", ErrUnexpectedType, v.Type())
-		
+
 	case reflect.Struct:
 		offset := 0
 		for i := 0; i < v.NumField(); i++ {
 			field := v.Field(i)
 			fieldType := v.Type().Field(i)
-			
+
 			// Skip unexported fields
 			if !fieldType.IsExported() {
 				continue
 			}
-			
+
 			// Check for serialize tag
 			tag := fieldType.Tag.Get("serialize")
 			if tag == "-" || tag == "false" {
 				continue
 			}
-			
+
 			n, err := unmarshal(src[offset:], field)
 			if err != nil {
 				return offset, err
 			}
-			
+
 			offset += n
 		}
 		return offset, nil
-		
+
 	default:
 		return 0, fmt.Errorf("%w: cannot unmarshal %v", ErrUnexpectedType, v.Kind())
 	}
@@ -309,18 +309,18 @@ func calcSize(v reflect.Value) (int, error) {
 		size := 0
 		for i := 0; i < v.NumField(); i++ {
 			fieldType := v.Type().Field(i)
-			
+
 			// Skip unexported fields
 			if !fieldType.IsExported() {
 				continue
 			}
-			
+
 			// Check for serialize tag
 			tag := fieldType.Tag.Get("serialize")
 			if tag == "-" || tag == "false" {
 				continue
 			}
-			
+
 			fieldSize, err := calcSize(v.Field(i))
 			if err != nil {
 				return 0, err
