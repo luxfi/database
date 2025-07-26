@@ -11,12 +11,12 @@ import (
 
 var (
 	ErrEnumToError = map[rpcdbpb.Error]error{
-		rpcdbpb.Error_ERROR_CLOSED:    db.ErrClosed,
-		rpcdbpb.Error_ERROR_NOT_FOUND: db.ErrNotFound,
+		rpcdbpb.Error_ERROR_CLOSED:    database.ErrClosed,
+		rpcdbpb.Error_ERROR_NOT_FOUND: database.ErrNotFound,
 	}
 	ErrorToErrEnum = map[error]rpcdbpb.Error{
-		db.ErrClosed:   rpcdbpb.Error_ERROR_CLOSED,
-		db.ErrNotFound: rpcdbpb.Error_ERROR_NOT_FOUND,
+		database.ErrClosed:   rpcdbpb.Error_ERROR_CLOSED,
+		database.ErrNotFound: rpcdbpb.Error_ERROR_NOT_FOUND,
 	}
 )
 

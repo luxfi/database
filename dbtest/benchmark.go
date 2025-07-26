@@ -9,13 +9,13 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/luxfi/crypto"
 	"github.com/luxfi/database"
-	"github.com/luxfi/database/utils"
 )
 
 var (
 	// Benchmarks is a list of all database benchmarks
-	Benchmarks = map[string]func(b *testing.B, db db.Database, keys, values [][]byte){
+	Benchmarks = map[string]func(b *testing.B, db database.Database, keys, values [][]byte){
 		"Get":            BenchmarkGet,
 		"Put":            BenchmarkPut,
 		"Delete":         BenchmarkDelete,
@@ -55,8 +55,8 @@ func SetupBenchmark(b *testing.B, count int, keySize, valueSize int) ([][]byte, 
 	return keys, values
 }
 
-// BenchmarkGet measures the time it takes to get an operation from a db.
-func BenchmarkGet(b *testing.B, db db.Database, keys, values [][]byte) {
+// BenchmarkGet measures the time it takes to get an operation from a database.
+func BenchmarkGet(b *testing.B, db database.Database, keys, values [][]byte) {
 	require.NotEmpty(b, keys)
 	count := len(keys)
 
@@ -64,31 +64,31 @@ func BenchmarkGet(b *testing.B, db db.Database, keys, values [][]byte) {
 
 	for i, key := range keys {
 		value := values[i]
-		require.NoError(db.Put(key, value))
+		require.NoError(database.Put(key, value))
 	}
 
 	b.ResetTimer()
 
 	// Reads b.N values from the db
 	for i := 0; i < b.N; i++ {
-		_, err := db.Get(keys[i%count])
+		_, err := database.Get(keys[i%count])
 		require.NoError(err)
 	}
 }
 
-// BenchmarkPut measures the time it takes to write an operation to a db.
-func BenchmarkPut(b *testing.B, db db.Database, keys, values [][]byte) {
+// BenchmarkPut measures the time it takes to write an operation to a database.
+func BenchmarkPut(b *testing.B, db database.Database, keys, values [][]byte) {
 	require.NotEmpty(b, keys)
 	count := len(keys)
 
 	// Writes b.N values to the db
 	for i := 0; i < b.N; i++ {
-		require.NoError(b, db.Put(keys[i%count], values[i%count]))
+		require.NoError(b, database.Put(keys[i%count], values[i%count]))
 	}
 }
 
-// BenchmarkDelete measures the time it takes to delete a (k, v) from a db.
-func BenchmarkDelete(b *testing.B, db db.Database, keys, values [][]byte) {
+// BenchmarkDelete measures the time it takes to delete a (k, v) from a database.
+func BenchmarkDelete(b *testing.B, db database.Database, keys, values [][]byte) {
 	require.NotEmpty(b, keys)
 	count := len(keys)
 
@@ -97,46 +97,46 @@ func BenchmarkDelete(b *testing.B, db db.Database, keys, values [][]byte) {
 	// Writes random values of size _size_ to the database
 	for i, key := range keys {
 		value := values[i]
-		require.NoError(db.Put(key, value))
+		require.NoError(database.Put(key, value))
 	}
 
 	b.ResetTimer()
 
 	// Deletes b.N values from the db
 	for i := 0; i < b.N; i++ {
-		require.NoError(db.Delete(keys[i%count]))
+		require.NoError(database.Delete(keys[i%count]))
 	}
 }
 
 // BenchmarkBatchPut measures the time it takes to batch put.
-func BenchmarkBatchPut(b *testing.B, db db.Database, keys, values [][]byte) {
+func BenchmarkBatchPut(b *testing.B, db database.Database, keys, values [][]byte) {
 	require.NotEmpty(b, keys)
 	count := len(keys)
 
-	batch := db.NewBatch()
+	batch := database.NewBatch()
 	for i := 0; i < b.N; i++ {
 		require.NoError(b, batch.Put(keys[i%count], values[i%count]))
 	}
 }
 
 // BenchmarkBatchDelete measures the time it takes to batch delete.
-func BenchmarkBatchDelete(b *testing.B, db db.Database, keys, _ [][]byte) {
+func BenchmarkBatchDelete(b *testing.B, db database.Database, keys, _ [][]byte) {
 	require.NotEmpty(b, keys)
 	count := len(keys)
 
-	batch := db.NewBatch()
+	batch := database.NewBatch()
 	for i := 0; i < b.N; i++ {
 		require.NoError(b, batch.Delete(keys[i%count]))
 	}
 }
 
 // BenchmarkBatchWrite measures the time it takes to batch write.
-func BenchmarkBatchWrite(b *testing.B, db db.Database, keys, values [][]byte) {
+func BenchmarkBatchWrite(b *testing.B, db database.Database, keys, values [][]byte) {
 	require.NotEmpty(b, keys)
 
 	require := require.New(b)
 
-	batch := db.NewBatch()
+	batch := database.NewBatch()
 	for i, key := range keys {
 		value := values[i]
 		require.NoError(batch.Put(key, value))
@@ -150,7 +150,7 @@ func BenchmarkBatchWrite(b *testing.B, db db.Database, keys, values [][]byte) {
 }
 
 // BenchmarkParallelGet measures the time it takes to read in parallel.
-func BenchmarkParallelGet(b *testing.B, db db.Database, keys, values [][]byte) {
+func BenchmarkParallelGet(b *testing.B, db database.Database, keys, values [][]byte) {
 	require.NotEmpty(b, keys)
 	count := len(keys)
 
@@ -158,48 +158,48 @@ func BenchmarkParallelGet(b *testing.B, db db.Database, keys, values [][]byte) {
 
 	for i, key := range keys {
 		value := values[i]
-		require.NoError(db.Put(key, value))
+		require.NoError(database.Put(key, value))
 	}
 
 	b.ResetTimer()
 
 	b.RunParallel(func(pb *testing.PB) {
 		for i := 0; pb.Next(); i++ {
-			_, err := db.Get(keys[i%count])
+			_, err := database.Get(keys[i%count])
 			require.NoError(err)
 		}
 	})
 }
 
 // BenchmarkParallelPut measures the time it takes to write to the db in parallel.
-func BenchmarkParallelPut(b *testing.B, db db.Database, keys, values [][]byte) {
+func BenchmarkParallelPut(b *testing.B, db database.Database, keys, values [][]byte) {
 	require.NotEmpty(b, keys)
 	count := len(keys)
 
 	b.RunParallel(func(pb *testing.PB) {
 		// Write N values to the db
 		for i := 0; pb.Next(); i++ {
-			require.NoError(b, db.Put(keys[i%count], values[i%count]))
+			require.NoError(b, database.Put(keys[i%count], values[i%count]))
 		}
 	})
 }
 
-// BenchmarkParallelDelete measures the time it takes to delete a (k, v) from the db.
-func BenchmarkParallelDelete(b *testing.B, db db.Database, keys, values [][]byte) {
+// BenchmarkParallelDelete measures the time it takes to delete a (k, v) from the database.
+func BenchmarkParallelDelete(b *testing.B, db database.Database, keys, values [][]byte) {
 	require.NotEmpty(b, keys)
 	count := len(keys)
 
 	require := require.New(b)
 	for i, key := range keys {
 		value := values[i]
-		require.NoError(db.Put(key, value))
+		require.NoError(database.Put(key, value))
 	}
 	b.ResetTimer()
 
 	b.RunParallel(func(pb *testing.PB) {
 		// Deletes b.N values from the db
 		for i := 0; pb.Next(); i++ {
-			require.NoError(db.Delete(keys[i%count]))
+			require.NoError(database.Delete(keys[i%count]))
 		}
 	})
 }

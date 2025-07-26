@@ -17,13 +17,13 @@ import (
 )
 
 var (
-	_ db.Database = (*DatabaseClient)(nil)
-	_ db.Batch    = (*batch)(nil)
-	_ db.Iterator = (*iterator)(nil)
+	_ database.Database = (*DatabaseClient)(nil)
+	_ database.Batch    = (*batch)(nil)
+	_ database.Iterator = (*iterator)(nil)
 )
 
-// IteratorError is an alias for db.IteratorError
-type IteratorError = db.IteratorError
+// IteratorError is an alias for database.IteratorError
+type IteratorError = database.IteratorError
 
 // DatabaseClient is an implementation of database that talks over RPC.
 type DatabaseClient struct {
@@ -39,7 +39,7 @@ func NewClient(client rpcdbpb.DatabaseClient) *DatabaseClient {
 
 // Has attempts to return if the database has a key with the provided value.
 func (db *DatabaseClient) Has(key []byte) (bool, error) {
-	resp, err := db.client.Has(context.Background(), &rpcdbpb.HasRequest{
+	resp, err := database.client.Has(context.Background(), &rpcdbpb.HasRequest{
 		Key: key,
 	})
 	if err != nil {
@@ -50,7 +50,7 @@ func (db *DatabaseClient) Has(key []byte) (bool, error) {
 
 // Get attempts to return the value that was mapped to the key that was provided
 func (db *DatabaseClient) Get(key []byte) ([]byte, error) {
-	resp, err := db.client.Get(context.Background(), &rpcdbpb.GetRequest{
+	resp, err := database.client.Get(context.Background(), &rpcdbpb.GetRequest{
 		Key: key,
 	})
 	if err != nil {
@@ -61,7 +61,7 @@ func (db *DatabaseClient) Get(key []byte) ([]byte, error) {
 
 // Put attempts to set the value this key maps to
 func (db *DatabaseClient) Put(key, value []byte) error {
-	resp, err := db.client.Put(context.Background(), &rpcdbpb.PutRequest{
+	resp, err := database.client.Put(context.Background(), &rpcdbpb.PutRequest{
 		Key:   key,
 		Value: value,
 	})
@@ -73,7 +73,7 @@ func (db *DatabaseClient) Put(key, value []byte) error {
 
 // Delete attempts to remove any mapping from the key
 func (db *DatabaseClient) Delete(key []byte) error {
-	resp, err := db.client.Delete(context.Background(), &rpcdbpb.DeleteRequest{
+	resp, err := database.client.Delete(context.Background(), &rpcdbpb.DeleteRequest{
 		Key: key,
 	})
 	if err != nil {
@@ -83,25 +83,25 @@ func (db *DatabaseClient) Delete(key []byte) error {
 }
 
 // NewBatch returns a new batch
-func (db *DatabaseClient) NewBatch() db.Batch {
+func (db *DatabaseClient) NewBatch() database.Batch {
 	return &batch{db: db}
 }
 
-func (db *DatabaseClient) NewIterator() db.Iterator {
-	return db.NewIteratorWithStartAndPrefix(nil, nil)
+func (db *DatabaseClient) NewIterator() database.Iterator {
+	return database.NewIteratorWithStartAndPrefix(nil, nil)
 }
 
-func (db *DatabaseClient) NewIteratorWithStart(start []byte) db.Iterator {
-	return db.NewIteratorWithStartAndPrefix(start, nil)
+func (db *DatabaseClient) NewIteratorWithStart(start []byte) database.Iterator {
+	return database.NewIteratorWithStartAndPrefix(start, nil)
 }
 
-func (db *DatabaseClient) NewIteratorWithPrefix(prefix []byte) db.Iterator {
-	return db.NewIteratorWithStartAndPrefix(nil, prefix)
+func (db *DatabaseClient) NewIteratorWithPrefix(prefix []byte) database.Iterator {
+	return database.NewIteratorWithStartAndPrefix(nil, prefix)
 }
 
 // NewIteratorWithStartAndPrefix returns a new empty iterator
-func (db *DatabaseClient) NewIteratorWithStartAndPrefix(start, prefix []byte) db.Iterator {
-	resp, err := db.client.NewIteratorWithStartAndPrefix(context.Background(), &rpcdbpb.NewIteratorWithStartAndPrefixRequest{
+func (db *DatabaseClient) NewIteratorWithStartAndPrefix(start, prefix []byte) database.Iterator {
+	resp, err := database.client.NewIteratorWithStartAndPrefix(context.Background(), &rpcdbpb.NewIteratorWithStartAndPrefixRequest{
 		Start:  start,
 		Prefix: prefix,
 	})
@@ -115,7 +115,7 @@ func (db *DatabaseClient) NewIteratorWithStartAndPrefix(start, prefix []byte) db
 
 // Compact attempts to optimize the space utilization in the provided range
 func (db *DatabaseClient) Compact(start, limit []byte) error {
-	resp, err := db.client.Compact(context.Background(), &rpcdbpb.CompactRequest{
+	resp, err := database.client.Compact(context.Background(), &rpcdbpb.CompactRequest{
 		Start: start,
 		Limit: limit,
 	})
@@ -127,8 +127,8 @@ func (db *DatabaseClient) Compact(start, limit []byte) error {
 
 // Close attempts to close the database
 func (db *DatabaseClient) Close() error {
-	db.closed.Set(true)
-	resp, err := db.client.Close(context.Background(), &rpcdbpb.CloseRequest{})
+	database.closed.Set(true)
+	resp, err := database.client.Close(context.Background(), &rpcdbpb.CloseRequest{})
 	if err != nil {
 		return err
 	}
@@ -136,12 +136,12 @@ func (db *DatabaseClient) Close() error {
 }
 
 func (db *DatabaseClient) HealthCheck() error {
-	_, err := db.client.HealthCheck(context.Background(), &emptypb.Empty{})
+	_, err := database.client.HealthCheck(context.Background(), &emptypb.Empty{})
 	return err
 }
 
 type batch struct {
-	db.BatchOps
+	database.BatchOps
 
 	db *DatabaseClient
 }
@@ -169,14 +169,14 @@ func (b *batch) Write() error {
 		}
 	}
 
-	resp, err := b.db.client.WriteBatch(context.Background(), request)
+	resp, err := b.database.client.WriteBatch(context.Background(), request)
 	if err != nil {
 		return err
 	}
 	return ErrEnumToError[resp.Err]
 }
 
-func (b *batch) Inner() db.Batch {
+func (b *batch) Inner() database.Batch {
 	return b
 }
 
@@ -216,7 +216,7 @@ func newIterator(db *DatabaseClient, id uint64) *iterator {
 // for a given iterator id.
 func (it *iterator) fetch() {
 	defer func() {
-		resp, err := it.db.client.IteratorRelease(context.Background(), &rpcdbpb.IteratorReleaseRequest{
+		resp, err := it.database.client.IteratorRelease(context.Background(), &rpcdbpb.IteratorReleaseRequest{
 			Id: it.id,
 		})
 		if err != nil {
@@ -230,7 +230,7 @@ func (it *iterator) fetch() {
 	}()
 
 	for {
-		resp, err := it.db.client.IteratorNext(context.Background(), &rpcdbpb.IteratorNextRequest{
+		resp, err := it.database.client.IteratorNext(context.Background(), &rpcdbpb.IteratorNextRequest{
 			Id: it.id,
 		})
 		if err != nil {
@@ -260,9 +260,9 @@ func (it *iterator) fetch() {
 // Next attempts to move the iterator to the next element and returns if this
 // succeeded
 func (it *iterator) Next() bool {
-	if it.db.closed.Get() {
+	if it.database.closed.Get() {
 		it.data = nil
-		it.setError(db.ErrClosed)
+		it.setError(database.ErrClosed)
 		return false
 	}
 	if len(it.data) > 1 {
@@ -316,7 +316,7 @@ func (it *iterator) Release() {
 }
 
 func (it *iterator) updateError() {
-	resp, err := it.db.client.IteratorError(context.Background(), &rpcdbpb.IteratorErrorRequest{
+	resp, err := it.database.client.IteratorError(context.Background(), &rpcdbpb.IteratorErrorRequest{
 		Id: it.id,
 	})
 	if err != nil {

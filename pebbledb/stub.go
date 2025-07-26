@@ -11,6 +11,6 @@ import (
 )
 
 // New returns a clear error when PebbleDB is disabled.
-func New(_ string, _ int, _ int, _ string, _ bool) (db.Database, error) {
-	return nil, db.NewErrBackendDisabled("pebbledb")
+func New(_ string, _ int, _ int, _ string, _ bool) (database.Database, error) {
+	return nil, database.NewErrBackendDisabled("pebbledb")
 }

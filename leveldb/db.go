@@ -64,18 +64,18 @@ func New(path string, blockCacheSize int, writeCacheSize int, handleCap int) (*D
 	return &Database{db: ldb}, nil
 }
 
-// Close implements db.Database.
+// Close implements database.Database.
 func (d *Database) Close() error {
 	return d.db.Close()
 }
 
-// HealthCheck implements db.Database.
+// HealthCheck implements database.Database.
 func (d *Database) HealthCheck() error {
 	_, err := d.db.GetProperty("leveldb.stats")
 	return err
 }
 
-// Has implements db.Database.
+// Has implements database.Database.
 func (d *Database) Has(key []byte) (bool, error) {
 	_, err := d.db.Get(key, nil)
 	if err == leveldb.ErrNotFound {
@@ -84,50 +84,50 @@ func (d *Database) Has(key []byte) (bool, error) {
 	return err == nil, err
 }
 
-// Get implements db.Database.
+// Get implements database.Database.
 func (d *Database) Get(key []byte) ([]byte, error) {
 	value, err := d.db.Get(key, nil)
 	if errors.Is(err, leveldb.ErrNotFound) {
-		return nil, db.ErrNotFound
+		return nil, database.ErrNotFound
 	}
 	return value, err
 }
 
-// Put implements db.Database.
+// Put implements database.Database.
 func (d *Database) Put(key []byte, value []byte) error {
 	return d.db.Put(key, value, nil)
 }
 
-// Delete implements db.Database.
+// Delete implements database.Database.
 func (d *Database) Delete(key []byte) error {
 	return d.db.Delete(key, nil)
 }
 
-// NewBatch implements db.Database.
-func (d *Database) NewBatch() db.Batch {
+// NewBatch implements database.Database.
+func (d *Database) NewBatch() database.Batch {
 	return &batch{
 		b: new(leveldb.Batch),
 		d: d,
 	}
 }
 
-// NewIterator implements db.Database.
-func (d *Database) NewIterator() db.Iterator {
+// NewIterator implements database.Database.
+func (d *Database) NewIterator() database.Iterator {
 	return d.NewIteratorWithStartAndPrefix(nil, nil)
 }
 
-// NewIteratorWithStart implements db.Database.
-func (d *Database) NewIteratorWithStart(start []byte) db.Iterator {
+// NewIteratorWithStart implements database.Database.
+func (d *Database) NewIteratorWithStart(start []byte) database.Iterator {
 	return d.NewIteratorWithStartAndPrefix(start, nil)
 }
 
-// NewIteratorWithPrefix implements db.Database.
-func (d *Database) NewIteratorWithPrefix(prefix []byte) db.Iterator {
+// NewIteratorWithPrefix implements database.Database.
+func (d *Database) NewIteratorWithPrefix(prefix []byte) database.Iterator {
 	return d.NewIteratorWithStartAndPrefix(nil, prefix)
 }
 
-// NewIteratorWithStartAndPrefix implements db.Database.
-func (d *Database) NewIteratorWithStartAndPrefix(start, prefix []byte) db.Iterator {
+// NewIteratorWithStartAndPrefix implements database.Database.
+func (d *Database) NewIteratorWithStartAndPrefix(start, prefix []byte) database.Iterator {
 	var iter iterator.Iterator
 	if len(prefix) == 0 {
 		iter = d.db.NewIterator(nil, nil)
@@ -145,7 +145,7 @@ func (d *Database) NewIteratorWithStartAndPrefix(start, prefix []byte) db.Iterat
 	}
 }
 
-// Compact implements db.Database.
+// Compact implements database.Database.
 func (d *Database) Compact(start []byte, limit []byte) error {
 	return d.db.CompactRange(util.Range{Start: start, Limit: limit})
 }
@@ -156,46 +156,46 @@ type batch struct {
 	d *Database
 }
 
-// Put implements db.Batch.
+// Put implements database.Batch.
 func (b *batch) Put(key, value []byte) error {
 	b.b.Put(key, value)
 	return nil
 }
 
-// Delete implements db.Batch.
+// Delete implements database.Batch.
 func (b *batch) Delete(key []byte) error {
 	b.b.Delete(key)
 	return nil
 }
 
-// Size implements db.Batch.
+// Size implements database.Batch.
 func (b *batch) Size() int {
 	return b.b.Len()
 }
 
-// Write implements db.Batch.
+// Write implements database.Batch.
 func (b *batch) Write() error {
 	return b.d.db.Write(b.b, nil)
 }
 
-// Reset implements db.Batch.
+// Reset implements database.Batch.
 func (b *batch) Reset() {
 	b.b.Reset()
 }
 
-// Replay implements db.Batch.
-func (b *batch) Replay(w db.KeyValueWriterDeleter) error {
+// Replay implements database.Batch.
+func (b *batch) Replay(w database.KeyValueWriterDeleter) error {
 	return b.b.Replay(&replayer{w: w})
 }
 
-// Inner implements db.Batch.
-func (b *batch) Inner() db.Batch {
+// Inner implements database.Batch.
+func (b *batch) Inner() database.Batch {
 	return b
 }
 
 // replayer is a helper to replay a batch.
 type replayer struct {
-	w db.KeyValueWriterDeleter
+	w database.KeyValueWriterDeleter
 }
 
 func (r *replayer) Put(key, value []byte) {
@@ -212,7 +212,7 @@ type dbIterator struct {
 	start []byte
 }
 
-// Next implements db.Iterator.
+// Next implements database.Iterator.
 func (it *dbIterator) Next() bool {
 	// If we haven't started iterating yet and we have a start key,
 	// check if we're already at a valid position
@@ -233,22 +233,22 @@ func (it *dbIterator) Next() bool {
 	return it.Iterator.Next()
 }
 
-// Error implements db.Iterator.
+// Error implements database.Iterator.
 func (it *dbIterator) Error() error {
 	return it.Iterator.Error()
 }
 
-// Key implements db.Iterator.
+// Key implements database.Iterator.
 func (it *dbIterator) Key() []byte {
 	return it.Iterator.Key()
 }
 
-// Value implements db.Iterator.
+// Value implements database.Iterator.
 func (it *dbIterator) Value() []byte {
 	return it.Iterator.Value()
 }
 
-// Release implements db.Iterator.
+// Release implements database.Iterator.
 func (it *dbIterator) Release() {
 	it.Iterator.Release()
 }

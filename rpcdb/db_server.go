@@ -20,14 +20,14 @@ const iterationBatchSize = 128 * utils.KiB
 
 var errUnknownIterator = errors.New("unknown iterator")
 
-// Iterator is an alias for db.Iterator
-type Iterator = db.Iterator
+// Iterator is an alias for database.Iterator
+type Iterator = database.Iterator
 
 // DatabaseServer is a database that is managed over RPC.
 type DatabaseServer struct {
 	rpcdbpb.UnsafeDatabaseServer
 
-	db db.Database
+	db database.Database
 
 	// iteratorLock protects [nextIteratorID] and [iterators] from concurrent
 	// modifications. Similarly to [batchLock], [iteratorLock] does not protect
@@ -40,7 +40,7 @@ type DatabaseServer struct {
 }
 
 // NewServer returns a database instance that is managed remotely
-func NewServer(database db.Database) *DatabaseServer {
+func NewServer(database database.Database) *DatabaseServer {
 	return &DatabaseServer{
 		db:        database,
 		iterators: make(map[uint64]Iterator),
@@ -49,7 +49,7 @@ func NewServer(database db.Database) *DatabaseServer {
 
 // Has delegates the Has call to the managed database and returns the result
 func (db *DatabaseServer) Has(_ context.Context, req *rpcdbpb.HasRequest) (*rpcdbpb.HasResponse, error) {
-	has, err := db.db.Has(req.Key)
+	has, err := database.database.Has(req.Key)
 	return &rpcdbpb.HasResponse{
 		Has: has,
 		Err: ErrorToErrEnum[err],
@@ -58,7 +58,7 @@ func (db *DatabaseServer) Has(_ context.Context, req *rpcdbpb.HasRequest) (*rpcd
 
 // Get delegates the Get call to the managed database and returns the result
 func (db *DatabaseServer) Get(_ context.Context, req *rpcdbpb.GetRequest) (*rpcdbpb.GetResponse, error) {
-	value, err := db.db.Get(req.Key)
+	value, err := database.database.Get(req.Key)
 	return &rpcdbpb.GetResponse{
 		Value: value,
 		Err:   ErrorToErrEnum[err],
@@ -67,33 +67,33 @@ func (db *DatabaseServer) Get(_ context.Context, req *rpcdbpb.GetRequest) (*rpcd
 
 // Put delegates the Put call to the managed database and returns the result
 func (db *DatabaseServer) Put(_ context.Context, req *rpcdbpb.PutRequest) (*rpcdbpb.PutResponse, error) {
-	err := db.db.Put(req.Key, req.Value)
+	err := database.database.Put(req.Key, req.Value)
 	return &rpcdbpb.PutResponse{Err: ErrorToErrEnum[err]}, ErrorToRPCError(err)
 }
 
 // Delete delegates the Delete call to the managed database and returns the
 // result
 func (db *DatabaseServer) Delete(_ context.Context, req *rpcdbpb.DeleteRequest) (*rpcdbpb.DeleteResponse, error) {
-	err := db.db.Delete(req.Key)
+	err := database.database.Delete(req.Key)
 	return &rpcdbpb.DeleteResponse{Err: ErrorToErrEnum[err]}, ErrorToRPCError(err)
 }
 
 // Compact delegates the Compact call to the managed database and returns the
 // result
 func (db *DatabaseServer) Compact(_ context.Context, req *rpcdbpb.CompactRequest) (*rpcdbpb.CompactResponse, error) {
-	err := db.db.Compact(req.Start, req.Limit)
+	err := database.database.Compact(req.Start, req.Limit)
 	return &rpcdbpb.CompactResponse{Err: ErrorToErrEnum[err]}, ErrorToRPCError(err)
 }
 
 // Close delegates the Close call to the managed database and returns the result
 func (db *DatabaseServer) Close(context.Context, *rpcdbpb.CloseRequest) (*rpcdbpb.CloseResponse, error) {
-	err := db.db.Close()
+	err := database.database.Close()
 	return &rpcdbpb.CloseResponse{Err: ErrorToErrEnum[err]}, ErrorToRPCError(err)
 }
 
-// HealthCheck performs a heath check against the underlying db.
+// HealthCheck performs a heath check against the underlying database.
 func (db *DatabaseServer) HealthCheck(ctx context.Context, _ *emptypb.Empty) (*rpcdbpb.HealthCheckResponse, error) {
-	err := db.db.HealthCheck()
+	err := database.database.HealthCheck()
 	if err != nil {
 		return &rpcdbpb.HealthCheckResponse{}, err
 	}
@@ -106,7 +106,7 @@ func (db *DatabaseServer) HealthCheck(ctx context.Context, _ *emptypb.Empty) (*r
 // WriteBatch takes in a set of key-value pairs and atomically writes them to
 // the internal database
 func (db *DatabaseServer) WriteBatch(_ context.Context, req *rpcdbpb.WriteBatchRequest) (*rpcdbpb.WriteBatchResponse, error) {
-	batch := db.db.NewBatch()
+	batch := database.database.NewBatch()
 	for _, put := range req.Puts {
 		if err := batch.Put(put.Key, put.Value); err != nil {
 			return &rpcdbpb.WriteBatchResponse{
@@ -131,22 +131,22 @@ func (db *DatabaseServer) WriteBatch(_ context.Context, req *rpcdbpb.WriteBatchR
 // NewIteratorWithStartAndPrefix allocates an iterator and returns the iterator
 // ID
 func (db *DatabaseServer) NewIteratorWithStartAndPrefix(_ context.Context, req *rpcdbpb.NewIteratorWithStartAndPrefixRequest) (*rpcdbpb.NewIteratorWithStartAndPrefixResponse, error) {
-	it := db.db.NewIteratorWithStartAndPrefix(req.Start, req.Prefix)
+	it := database.database.NewIteratorWithStartAndPrefix(req.Start, req.Prefix)
 
-	db.iteratorLock.Lock()
-	defer db.iteratorLock.Unlock()
+	database.iteratorLock.Lock()
+	defer database.iteratorLock.Unlock()
 
-	id := db.nextIteratorID
-	db.iterators[id] = it
-	db.nextIteratorID++
+	id := database.nextIteratorID
+	database.iterators[id] = it
+	database.nextIteratorID++
 	return &rpcdbpb.NewIteratorWithStartAndPrefixResponse{Id: id}, nil
 }
 
 // IteratorNext attempts to call next on the requested iterator
 func (db *DatabaseServer) IteratorNext(_ context.Context, req *rpcdbpb.IteratorNextRequest) (*rpcdbpb.IteratorNextResponse, error) {
-	db.iteratorLock.RLock()
-	it, exists := db.iterators[req.Id]
-	db.iteratorLock.RUnlock()
+	database.iteratorLock.RLock()
+	it, exists := database.iterators[req.Id]
+	database.iteratorLock.RUnlock()
 	if !exists {
 		return nil, errUnknownIterator
 	}
@@ -171,9 +171,9 @@ func (db *DatabaseServer) IteratorNext(_ context.Context, req *rpcdbpb.IteratorN
 
 // IteratorError attempts to report any errors that occurred during iteration
 func (db *DatabaseServer) IteratorError(_ context.Context, req *rpcdbpb.IteratorErrorRequest) (*rpcdbpb.IteratorErrorResponse, error) {
-	db.iteratorLock.RLock()
-	it, exists := db.iterators[req.Id]
-	db.iteratorLock.RUnlock()
+	database.iteratorLock.RLock()
+	it, exists := database.iterators[req.Id]
+	database.iteratorLock.RUnlock()
 	if !exists {
 		return nil, errUnknownIterator
 	}
@@ -183,14 +183,14 @@ func (db *DatabaseServer) IteratorError(_ context.Context, req *rpcdbpb.Iterator
 
 // IteratorRelease attempts to release the resources allocated to an iterator
 func (db *DatabaseServer) IteratorRelease(_ context.Context, req *rpcdbpb.IteratorReleaseRequest) (*rpcdbpb.IteratorReleaseResponse, error) {
-	db.iteratorLock.Lock()
-	it, exists := db.iterators[req.Id]
+	database.iteratorLock.Lock()
+	it, exists := database.iterators[req.Id]
 	if !exists {
-		db.iteratorLock.Unlock()
+		database.iteratorLock.Unlock()
 		return &rpcdbpb.IteratorReleaseResponse{}, nil
 	}
-	delete(db.iterators, req.Id)
-	db.iteratorLock.Unlock()
+	delete(database.iterators, req.Id)
+	database.iteratorLock.Unlock()
 
 	err := it.Error()
 	it.Release()

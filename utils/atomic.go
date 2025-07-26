@@ -3,24 +3,61 @@
 
 package utils
 
-import "sync/atomic"
+import (
+	"encoding/json"
+	"sync"
+)
 
-// Atomic provides atomic operations for a value of type T
+var (
+	_ json.Marshaler   = (*Atomic[struct{}])(nil)
+	_ json.Unmarshaler = (*Atomic[struct{}])(nil)
+)
+
 type Atomic[T any] struct {
-	v atomic.Value
+	lock  sync.RWMutex
+	value T
 }
 
-// Get returns the value
-func (a *Atomic[T]) Get() T {
-	v := a.v.Load()
-	if v == nil {
-		var zero T
-		return zero
+func NewAtomic[T any](value T) *Atomic[T] {
+	return &Atomic[T]{
+		value: value,
 	}
-	return v.(T)
 }
 
-// Set sets the value
-func (a *Atomic[T]) Set(v T) {
-	a.v.Store(v)
+func (a *Atomic[T]) Get() T {
+	a.lock.RLock()
+	defer a.lock.RUnlock()
+
+	return a.value
+}
+
+func (a *Atomic[T]) Set(value T) {
+	a.lock.Lock()
+	defer a.lock.Unlock()
+
+	a.value = value
+}
+
+func (a *Atomic[T]) Swap(value T) T {
+	a.lock.Lock()
+	defer a.lock.Unlock()
+
+	old := a.value
+	a.value = value
+
+	return old
+}
+
+func (a *Atomic[T]) MarshalJSON() ([]byte, error) {
+	a.lock.RLock()
+	defer a.lock.RUnlock()
+
+	return json.Marshal(a.value)
+}
+
+func (a *Atomic[T]) UnmarshalJSON(b []byte) error {
+	a.lock.Lock()
+	defer a.lock.Unlock()
+
+	return json.Unmarshal(b, &a.value)
 }
