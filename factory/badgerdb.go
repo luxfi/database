@@ -6,8 +6,16 @@ package factory
 import (
 	"github.com/luxfi/database"
 	"github.com/luxfi/database/badgerdb"
+	"github.com/prometheus/client_golang/prometheus"
+	"go.uber.org/zap"
 )
 
-func newBadgerDB(config DatabaseConfig) (database.Database, error) {
-	return badgerdb.New(config.Dir, config.Config, config.Name, config.MetricsReg)
+func newBadgerDB(
+	dbPath string,
+	config []byte,
+	logger *zap.Logger,
+	registerer prometheus.Registerer,
+	metricsPrefix string,
+) (database.Database, error) {
+	return badgerdb.New(dbPath, config, "badgerdb", registerer)
 }

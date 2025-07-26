@@ -7,9 +7,17 @@
 package factory
 
 import (
-	db "github.com/luxfi/database"
+	"github.com/luxfi/database"
+	"github.com/prometheus/client_golang/prometheus"
+	"go.uber.org/zap"
 )
 
-func newPebbleDB(config DatabaseConfig) (db.Database, error) {
-	return nil, db.NewErrBackendDisabled("pebbledb")
+func newPebbleDB(
+	dbPath string,
+	config []byte,
+	logger *zap.Logger,
+	registerer prometheus.Registerer,
+	metricsPrefix string,
+) (database.Database, error) {
+	return nil, database.NewErrBackendDisabled("pebbledb")
 }

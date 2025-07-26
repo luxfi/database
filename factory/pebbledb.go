@@ -9,12 +9,20 @@ package factory
 import (
 	"github.com/luxfi/database"
 	"github.com/luxfi/database/pebbledb"
+	"github.com/prometheus/client_golang/prometheus"
+	"go.uber.org/zap"
 )
 
-func newPebbleDB(config DatabaseConfig) (database.Database, error) {
+func newPebbleDB(
+	dbPath string,
+	config []byte,
+	logger *zap.Logger,
+	registerer prometheus.Registerer,
+	metricsPrefix string,
+) (database.Database, error) {
 	// Default cache sizes for pebbledb
 	cache := 512 * 1024 * 1024 // 512 MB
 	handles := 256
 	readonly := false
-	return pebbledb.New(config.Dir, cache, handles, config.Name, readonly)
+	return pebbledb.New(dbPath, cache, handles, "pebbledb", readonly)
 }
