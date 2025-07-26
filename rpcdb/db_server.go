@@ -13,7 +13,7 @@ import (
 	"github.com/luxfi/database"
 	"github.com/luxfi/database/utils"
 
-	rpcdbpb "github.com/luxfi/database/proto/pb/rpcdb"
+	rpcdbpb "github.com/luxfi/node/proto/pb/rpcdb"
 )
 
 const iterationBatchSize = 128 * utils.KiB

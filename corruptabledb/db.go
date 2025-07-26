@@ -8,7 +8,7 @@ import (
 	"sync"
 
 	"github.com/luxfi/database"
-	"github.com/luxfi/database/logging"
+	"github.com/luxfi/log"
 )
 
 var (
@@ -25,7 +25,7 @@ var (
 type Database struct {
 	database.Database
 
-	log logging.Logger
+	log log.Logger
 	// initialError stores the error other than "not found" or "closed" while
 	// performing a db operation. If not nil, Has, Get, Put, Delete and batch
 	// writes will fail with initialError.
@@ -34,7 +34,7 @@ type Database struct {
 }
 
 // New returns a new prefixed database
-func New(database database.Database, log logging.Logger) *Database {
+func New(database database.Database, log log.Logger) *Database {
 	return &Database{
 		Database: database,
 		log:      log,
