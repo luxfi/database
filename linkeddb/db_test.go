@@ -13,13 +13,13 @@ import (
 func TestInterface(t *testing.T) {
 	for name, test := range dbtest.TestsBasic {
 		t.Run(name, func(t *testing.T) {
-			db := NewDefault(memdatabase.New())
+			db := NewDefault(memdb.New())
 			test(t, db)
 		})
 	}
 }
 
 func FuzzKeyValue(f *testing.F) {
-	db := NewDefault(memdatabase.New())
+	db := NewDefault(memdb.New())
 	dbtest.FuzzKeyValue(f, db)
 }

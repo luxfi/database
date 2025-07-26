@@ -8,6 +8,8 @@ import (
 	"errors"
 	"fmt"
 	"time"
+
+	"github.com/luxfi/ids"
 )
 
 const (
@@ -224,4 +226,18 @@ func ClearPrefix(db Database, prefix []byte, writeSize int) error {
 		return err
 	}
 	return it.Error()
+}
+
+// PutID stores an ID at the given key
+func PutID(db KeyValueWriter, key []byte, id ids.ID) error {
+	return db.Put(key, id[:])
+}
+
+// GetID retrieves an ID from the given key
+func GetID(db KeyValueReader, key []byte) (ids.ID, error) {
+	idBytes, err := db.Get(key)
+	if err != nil {
+		return ids.Empty, err
+	}
+	return ids.ToID(idBytes)
 }

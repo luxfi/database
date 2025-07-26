@@ -9,7 +9,7 @@ package manager
 import (
 	"errors"
 
-	"github.com/luxfi/database"
+	db "github.com/luxfi/database"
 )
 
 var errPebbleDBNotSupported = errors.New("pebbledb not supported in this build")

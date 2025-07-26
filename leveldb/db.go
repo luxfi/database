@@ -8,7 +8,9 @@ package leveldb
 
 import (
 	"bytes"
-	"errors"
+	"slices"
+	"sync"
+	"sync/atomic"
 
 	"github.com/luxfi/database"
 	"github.com/syndtr/goleveldb/leveldb"
@@ -30,7 +32,9 @@ const (
 
 // Database is a persistent key-value store using LevelDB.
 type Database struct {
-	db *leveldb.DB
+	db     *leveldb.DB
+	closed atomic.Bool
+	mu     sync.RWMutex
 }
 
 // New returns a new LevelDB database.
@@ -47,13 +51,13 @@ func New(path string, blockCacheSize int, writeCacheSize int, handleCap int) (*D
 	}
 
 	opts := &opt.Options{
-		BlockCacheCapacity:              blockCacheSize,
-		WriteBuffer:                     writeCacheSize,
-		OpenFilesCacheCapacity:          handleCap,
-		CompactionTableSize:             4 * opt.MiB,
-		CompactionTableSizeMultiplier:   2.0,
-		CompactionL0Trigger:             8,
-		DisableSeeksCompaction:          true,
+		BlockCacheCapacity:            blockCacheSize,
+		WriteBuffer:                   writeCacheSize,
+		OpenFilesCacheCapacity:        handleCap,
+		CompactionTableSize:           4 * opt.MiB,
+		CompactionTableSizeMultiplier: 2.0,
+		CompactionL0Trigger:           8,
+		DisableSeeksCompaction:        true,
 	}
 
 	ldb, err := leveldb.OpenFile(path, opts)
@@ -66,45 +70,72 @@ func New(path string, blockCacheSize int, writeCacheSize int, handleCap int) (*D
 
 // Close implements database.Database.
 func (d *Database) Close() error {
-	return d.db.Close()
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	
+	if d.closed.Load() {
+		return database.ErrClosed
+	}
+	
+	d.closed.Store(true)
+	return updateError(d.db.Close())
 }
 
 // HealthCheck implements database.Database.
 func (d *Database) HealthCheck() error {
+	if d.closed.Load() {
+		return database.ErrClosed
+	}
 	_, err := d.db.GetProperty("leveldb.stats")
-	return err
+	return updateError(err)
 }
 
 // Has implements database.Database.
 func (d *Database) Has(key []byte) (bool, error) {
+	if d.closed.Load() {
+		return false, database.ErrClosed
+	}
 	_, err := d.db.Get(key, nil)
 	if err == leveldb.ErrNotFound {
 		return false, nil
 	}
-	return err == nil, err
+	return err == nil, updateError(err)
 }
 
 // Get implements database.Database.
 func (d *Database) Get(key []byte) ([]byte, error) {
-	value, err := d.db.Get(key, nil)
-	if errors.Is(err, leveldb.ErrNotFound) {
-		return nil, database.ErrNotFound
+	if d.closed.Load() {
+		return nil, database.ErrClosed
 	}
-	return value, err
+	value, err := d.db.Get(key, nil)
+	return value, updateError(err)
 }
 
 // Put implements database.Database.
 func (d *Database) Put(key []byte, value []byte) error {
-	return d.db.Put(key, value, nil)
+	if d.closed.Load() {
+		return database.ErrClosed
+	}
+	return updateError(d.db.Put(key, value, nil))
 }
 
 // Delete implements database.Database.
 func (d *Database) Delete(key []byte) error {
-	return d.db.Delete(key, nil)
+	if d.closed.Load() {
+		return database.ErrClosed
+	}
+	return updateError(d.db.Delete(key, nil))
 }
 
 // NewBatch implements database.Database.
 func (d *Database) NewBatch() database.Batch {
+	if d.closed.Load() {
+		// Return a batch that will error on write
+		return &batch{
+			b: new(leveldb.Batch),
+			d: d,
+		}
+	}
 	return &batch{
 		b: new(leveldb.Batch),
 		d: d,
@@ -128,6 +159,15 @@ func (d *Database) NewIteratorWithPrefix(prefix []byte) database.Iterator {
 
 // NewIteratorWithStartAndPrefix implements database.Database.
 func (d *Database) NewIteratorWithStartAndPrefix(start, prefix []byte) database.Iterator {
+	if d.closed.Load() {
+		return &dbIterator{
+			Iterator: nil,
+			start:    start,
+			db:       d,
+			err:      database.ErrClosed,
+		}
+	}
+	
 	var iter iterator.Iterator
 	if len(prefix) == 0 {
 		iter = d.db.NewIterator(nil, nil)
@@ -139,15 +179,27 @@ func (d *Database) NewIteratorWithStartAndPrefix(start, prefix []byte) database.
 		iter.Seek(start)
 	}
 
-	return &dbIterator{
+	dbIter := &dbIterator{
 		Iterator: iter,
 		start:    start,
+		db:       d,
 	}
+	
+	// If we're already at a valid position after seeking, store the current key/value
+	if iter.Valid() {
+		dbIter.key = slices.Clone(iter.Key())
+		dbIter.value = slices.Clone(iter.Value())
+	}
+	
+	return dbIter
 }
 
 // Compact implements database.Database.
 func (d *Database) Compact(start []byte, limit []byte) error {
-	return d.db.CompactRange(util.Range{Start: start, Limit: limit})
+	if d.closed.Load() {
+		return database.ErrClosed
+	}
+	return updateError(d.db.CompactRange(util.Range{Start: start, Limit: limit}))
 }
 
 // batch is a batch of operations to be written atomically.
@@ -175,7 +227,10 @@ func (b *batch) Size() int {
 
 // Write implements database.Batch.
 func (b *batch) Write() error {
-	return b.d.db.Write(b.b, nil)
+	if b.d.closed.Load() {
+		return database.ErrClosed
+	}
+	return updateError(b.d.db.Write(b.b, nil))
 }
 
 // Reset implements database.Batch.
@@ -185,7 +240,12 @@ func (b *batch) Reset() {
 
 // Replay implements database.Batch.
 func (b *batch) Replay(w database.KeyValueWriterDeleter) error {
-	return b.b.Replay(&replayer{w: w})
+	replay := &replayer{w: w}
+	if err := b.b.Replay(replay); err != nil {
+		// leveldb's Replay doesn't return errors
+		return err
+	}
+	return replay.err
 }
 
 // Inner implements database.Batch.
@@ -195,60 +255,107 @@ func (b *batch) Inner() database.Batch {
 
 // replayer is a helper to replay a batch.
 type replayer struct {
-	w database.KeyValueWriterDeleter
+	w   database.KeyValueWriterDeleter
+	err error
 }
 
 func (r *replayer) Put(key, value []byte) {
-	r.w.Put(key, value)
+	if r.err != nil {
+		return
+	}
+	r.err = r.w.Put(key, value)
 }
 
 func (r *replayer) Delete(key []byte) {
-	r.w.Delete(key)
+	if r.err != nil {
+		return
+	}
+	r.err = r.w.Delete(key)
 }
 
 // dbIterator is an iterator over a LevelDB database.
 type dbIterator struct {
 	iterator.Iterator
 	start []byte
+	db    *Database
+	err   error
+	key   []byte
+	value []byte
 }
 
 // Next implements database.Iterator.
 func (it *dbIterator) Next() bool {
+	// Check if iterator was created with an error or database is closed
+	if it.err != nil || it.Iterator == nil {
+		it.key = nil
+		it.value = nil
+		return false
+	}
+	
+	// Check if database is closed
+	if it.db != nil && it.db.closed.Load() {
+		it.key = nil
+		it.value = nil
+		it.err = database.ErrClosed
+		return false
+	}
+	
 	// If we haven't started iterating yet and we have a start key,
 	// check if we're already at a valid position
 	if it.start != nil && !it.Valid() {
+		it.key = nil
+		it.value = nil
 		return false
 	}
 
 	// If we have a start key and haven't moved yet, check current position
 	if it.start != nil {
-		if it.Valid() && bytes.Compare(it.Key(), it.start) >= 0 {
+		if it.Valid() && bytes.Compare(it.Iterator.Key(), it.start) >= 0 {
 			// We're already at or past the start key
 			it.start = nil // Clear start so we know we've started
+			// Store current key/value
+			it.key = slices.Clone(it.Iterator.Key())
+			it.value = slices.Clone(it.Iterator.Value())
 			return true
 		}
 		it.start = nil // Clear start since we've now started iteration
 	}
 
-	return it.Iterator.Next()
+	hasNext := it.Iterator.Next()
+	if hasNext {
+		it.key = slices.Clone(it.Iterator.Key())
+		it.value = slices.Clone(it.Iterator.Value())
+	} else {
+		it.key = nil
+		it.value = nil
+	}
+	return hasNext
 }
 
 // Error implements database.Iterator.
 func (it *dbIterator) Error() error {
+	if it.err != nil {
+		return it.err
+	}
+	if it.Iterator == nil {
+		return nil
+	}
 	return it.Iterator.Error()
 }
 
 // Key implements database.Iterator.
 func (it *dbIterator) Key() []byte {
-	return it.Iterator.Key()
+	return it.key
 }
 
 // Value implements database.Iterator.
 func (it *dbIterator) Value() []byte {
-	return it.Iterator.Value()
+	return it.value
 }
 
 // Release implements database.Iterator.
 func (it *dbIterator) Release() {
-	it.Iterator.Release()
+	if it.Iterator != nil {
+		it.Iterator.Release()
+	}
 }

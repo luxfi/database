@@ -1,9 +1,6 @@
 // Copyright (C) 2020-2025, Lux Industries Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 
-//go:build badgerdb
-// +build badgerdb
-
 package badgerdb
 
 import (
@@ -17,7 +14,7 @@ import (
 )
 
 var (
-	_ db.Database = (*Database)(nil)
+	_ database.Database = (*Database)(nil)
 
 	// emptyKeyPlaceholder is used internally to store empty keys since BadgerDB doesn't support them
 	emptyKeyPlaceholder = []byte{0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF}
@@ -33,6 +30,11 @@ type Database struct {
 
 // New returns a new badgerdb-backed database
 func New(file string, configBytes []byte, namespace string, metrics prometheus.Registerer) (*Database, error) {
+	// BadgerDB requires a valid directory path
+	if file == "" {
+		return nil, errors.New("badgerdb: database path required")
+	}
+	
 	// Configure BadgerDB options
 	opts := badger.DefaultOptions(file)
 	opts.Logger = nil // TODO: wrap our logger
@@ -51,13 +53,21 @@ func New(file string, configBytes []byte, namespace string, metrics prometheus.R
 
 // Close implements the Database interface
 func (d *Database) Close() error {
+	if d == nil {
+		return nil
+	}
+	
 	d.closeMu.Lock()
 	defer d.closeMu.Unlock()
 
 	if d.closed {
-		return db.ErrClosed
+		return database.ErrClosed
 	}
 	d.closed = true
+	
+	if d.db == nil {
+		return nil
+	}
 	return d.db.Close()
 }
 
@@ -67,7 +77,7 @@ func (d *Database) HealthCheck() error {
 	defer d.closeMu.RUnlock()
 
 	if d.closed {
-		return db.ErrClosed
+		return database.ErrClosed
 	}
 	// BadgerDB doesn't have a direct health check, but we can try a simple operation
 	return d.db.View(func(txn *badger.Txn) error {
@@ -81,7 +91,7 @@ func (d *Database) Has(key []byte) (bool, error) {
 	defer d.closeMu.RUnlock()
 
 	if d.closed {
-		return false, db.ErrClosed
+		return false, database.ErrClosed
 	}
 
 	// Handle empty keys using placeholder
@@ -111,7 +121,7 @@ func (d *Database) Get(key []byte) ([]byte, error) {
 	defer d.closeMu.RUnlock()
 
 	if d.closed {
-		return nil, db.ErrClosed
+		return nil, database.ErrClosed
 	}
 
 	// Handle empty keys using placeholder
@@ -124,7 +134,7 @@ func (d *Database) Get(key []byte) ([]byte, error) {
 		item, err := txn.Get(key)
 		if err != nil {
 			if errors.Is(err, badger.ErrKeyNotFound) {
-				return db.ErrNotFound
+				return database.ErrNotFound
 			}
 			return err
 		}
@@ -140,7 +150,7 @@ func (d *Database) Put(key []byte, value []byte) error {
 	defer d.closeMu.RUnlock()
 
 	if d.closed {
-		return db.ErrClosed
+		return database.ErrClosed
 	}
 
 	// Handle empty keys using placeholder
@@ -159,7 +169,7 @@ func (d *Database) Delete(key []byte) error {
 	defer d.closeMu.RUnlock()
 
 	if d.closed {
-		return db.ErrClosed
+		return database.ErrClosed
 	}
 
 	// Handle empty keys using placeholder
@@ -173,96 +183,160 @@ func (d *Database) Delete(key []byte) error {
 }
 
 // NewBatch implements the Database interface
-func (d *Database) NewBatch() db.Batch {
+func (d *Database) NewBatch() database.Batch {
 	return &batch{
-		db:      d,
-		ops:     make([]batchOp, 0),
-		size:    0,
-		closeMu: &d.closeMu,
+		db:    d,
+		ops:   make([]batchOp, 0, 16),
+		size:  0,
+		reset: true,
 	}
 }
 
 // NewIterator implements the Database interface
-func (d *Database) NewIterator() db.Iterator {
+func (d *Database) NewIterator() database.Iterator {
 	return d.NewIteratorWithStartAndPrefix(nil, nil)
 }
 
 // NewIteratorWithStart implements the Database interface
-func (d *Database) NewIteratorWithStart(start []byte) db.Iterator {
+func (d *Database) NewIteratorWithStart(start []byte) database.Iterator {
 	return d.NewIteratorWithStartAndPrefix(start, nil)
 }
 
 // NewIteratorWithPrefix implements the Database interface
-func (d *Database) NewIteratorWithPrefix(prefix []byte) db.Iterator {
+func (d *Database) NewIteratorWithPrefix(prefix []byte) database.Iterator {
 	return d.NewIteratorWithStartAndPrefix(nil, prefix)
 }
 
 // NewIteratorWithStartAndPrefix implements the Database interface
-func (d *Database) NewIteratorWithStartAndPrefix(start, prefix []byte) db.Iterator {
+func (d *Database) NewIteratorWithStartAndPrefix(start, prefix []byte) database.Iterator {
 	d.closeMu.RLock()
 	defer d.closeMu.RUnlock()
 
 	if d.closed {
-		return &iterator{
-			db:       d,
-			err:      db.ErrClosed,
-			closedMu: &d.closeMu,
-		}
+		return &nopIterator{err: database.ErrClosed}
 	}
 
 	txn := d.db.NewTransaction(false)
 	opts := badger.DefaultIteratorOptions
-	opts.Prefix = prefix
+	opts.PrefetchSize = 10
 
 	it := txn.NewIterator(opts)
-	
-	return &iterator{
-		db:       d,
-		txn:      txn,
-		iter:     it,
-		prefix:   prefix,
-		start:    start,
-		started:  false,
-		closedMu: &d.closeMu,
+	iter := &iterator{
+		txn:    txn,
+		iter:   it,
+		prefix: prefix,
+		start:  start,
+		closed: false,
+		db:     d,
 	}
+
+	// Initialize iterator position
+	if len(start) > 0 {
+		it.Seek(start)
+	} else if len(prefix) > 0 {
+		it.Seek(prefix)
+	} else {
+		it.Rewind()
+	}
+
+	// If using prefix, ensure we're at a valid position
+	if len(prefix) > 0 && it.Valid() && !bytes.HasPrefix(it.Item().Key(), prefix) {
+		// Move to next valid item or mark as exhausted
+		iter.Next()
+	}
+
+	return iter
 }
 
 // Compact implements the Database interface
-func (d *Database) Compact(start, limit []byte) error {
+func (d *Database) Compact(start []byte, limit []byte) error {
 	d.closeMu.RLock()
 	defer d.closeMu.RUnlock()
 
 	if d.closed {
-		return db.ErrClosed
+		return database.ErrClosed
 	}
 
-	// BadgerDB handles compaction automatically via its value log GC
-	// We can trigger a manual GC run
-	for {
-		err := d.db.RunValueLogGC(0.5)
-		if err == badger.ErrNoRewrite {
-			break
-		}
-		if err != nil {
-			return err
-		}
+	// BadgerDB handles compaction automatically in the background
+	// We can trigger a manual compaction if needed
+	// The start and limit parameters are ignored as BadgerDB doesn't support range compaction
+	err := d.db.RunValueLogGC(0.5)
+	// BadgerDB returns an error if GC didn't result in any cleanup, but that's not really an error
+	if err != nil && err.Error() == "Value log GC attempt didn't result in any cleanup" {
+		return nil
 	}
-	return nil
+	return err
 }
 
-// batchOp is a batch operation
+// GetSnapshot implements the database.Database interface
+func (d *Database) GetSnapshot() (database.Database, error) {
+	// BadgerDB doesn't support snapshots in the same way
+	// For now, return the same database instance
+	// TODO: Implement proper snapshot support if needed
+	return d, nil
+}
+
+// Empty returns true if the database doesn't contain any keys (but not deleted keys)
+func (d *Database) Empty() (bool, error) {
+	d.closeMu.RLock()
+	defer d.closeMu.RUnlock()
+
+	if d.closed {
+		return false, database.ErrClosed
+	}
+
+	empty := true
+	err := d.db.View(func(txn *badger.Txn) error {
+		opts := badger.DefaultIteratorOptions
+		opts.PrefetchValues = false
+		it := txn.NewIterator(opts)
+		defer it.Close()
+
+		it.Rewind()
+		if it.Valid() {
+			empty = false
+		}
+		return nil
+	})
+	return empty, err
+}
+
+// Len returns the number of keys in the database
+func (d *Database) Len() (int, error) {
+	d.closeMu.RLock()
+	defer d.closeMu.RUnlock()
+
+	if d.closed {
+		return 0, database.ErrClosed
+	}
+
+	count := 0
+	err := d.db.View(func(txn *badger.Txn) error {
+		opts := badger.DefaultIteratorOptions
+		opts.PrefetchValues = false
+		it := txn.NewIterator(opts)
+		defer it.Close()
+
+		for it.Rewind(); it.Valid(); it.Next() {
+			count++
+		}
+		return nil
+	})
+	return count, err
+}
+
+// batch represents a batch of database operations
+type batch struct {
+	db    *Database
+	ops   []batchOp
+	size  int
+	reset bool
+}
+
 type batchOp struct {
-	delete bool
 	key    []byte
 	value  []byte
-}
-
-// batch is a badgerdb batch
-type batch struct {
-	db      *Database
-	ops     []batchOp
-	size    int
-	closeMu *sync.RWMutex
+	delete bool
 }
 
 // Put implements the Batch interface
@@ -271,10 +345,10 @@ func (b *batch) Put(key, value []byte) error {
 	if len(key) == 0 {
 		key = emptyKeyPlaceholder
 	}
+
 	b.ops = append(b.ops, batchOp{
-		delete: false,
-		key:    append([]byte{}, key...),
-		value:  append([]byte{}, value...),
+		key:   append([]byte{}, key...),
+		value: append([]byte{}, value...),
 	})
 	b.size += len(key) + len(value)
 	return nil
@@ -286,26 +360,19 @@ func (b *batch) Delete(key []byte) error {
 	if len(key) == 0 {
 		key = emptyKeyPlaceholder
 	}
+
 	b.ops = append(b.ops, batchOp{
-		delete: true,
 		key:    append([]byte{}, key...),
+		delete: true,
 	})
 	b.size += len(key)
 	return nil
 }
 
-// Size implements the Batch interface
-func (b *batch) Size() int {
-	return b.size
-}
-
 // Write implements the Batch interface
 func (b *batch) Write() error {
-	b.closeMu.RLock()
-	defer b.closeMu.RUnlock()
-
 	if b.db.closed {
-		return db.ErrClosed
+		return database.ErrClosed
 	}
 
 	return b.db.db.Update(func(txn *badger.Txn) error {
@@ -324,14 +391,22 @@ func (b *batch) Write() error {
 	})
 }
 
+// WriteSync implements the Batch interface
+func (b *batch) WriteSync() error {
+	// BadgerDB syncs by default
+	return b.Write()
+}
+
 // Reset implements the Batch interface
 func (b *batch) Reset() {
-	b.ops = b.ops[:0]
-	b.size = 0
+	if b.reset {
+		b.ops = b.ops[:0]
+		b.size = 0
+	}
 }
 
 // Replay implements the Batch interface
-func (b *batch) Replay(w db.KeyValueWriterDeleter) error {
+func (b *batch) Replay(w database.KeyValueWriterDeleter) error {
 	for _, op := range b.ops {
 		if op.delete {
 			if err := w.Delete(op.key); err != nil {
@@ -346,140 +421,180 @@ func (b *batch) Replay(w db.KeyValueWriterDeleter) error {
 	return nil
 }
 
-// Inner returns the inner batch, if applicable
-func (b *batch) Inner() db.Batch {
+// SetResetDisabled implements the Batch interface
+func (b *batch) SetResetDisabled(disabled bool) {
+	b.reset = !disabled
+}
+
+// GetResetDisabled implements the Batch interface
+func (b *batch) GetResetDisabled() bool {
+	return !b.reset
+}
+
+// Inner implements the Batch interface
+func (b *batch) Inner() database.Batch {
 	return b
 }
 
-// iterator is a badgerdb iterator
+// Size implements the Batch interface
+func (b *batch) Size() int {
+	return b.size
+}
+
+// iterator wraps a BadgerDB iterator
 type iterator struct {
-	db       *Database
 	txn      *badger.Txn
 	iter     *badger.Iterator
 	prefix   []byte
 	start    []byte
-	started  bool
+	closed   bool
 	err      error
-	closedMu *sync.RWMutex
-	// Cache current key/value to handle closed database case
-	cachedKey   []byte
-	cachedValue []byte
+	mu       sync.RWMutex
+	started  bool // Track if we've started iteration
+	key      []byte
+	value    []byte
+	db       *Database
 }
 
 // Next implements the Iterator interface
-func (it *iterator) Next() bool {
-	if it.iter == nil || it.err != nil {
+func (i *iterator) Next() bool {
+	i.mu.Lock()
+	defer i.mu.Unlock()
+
+	// Check if iterator is closed
+	if i.closed {
+		i.err = database.ErrClosed
+		i.key = nil
+		i.value = nil
 		return false
 	}
 
-	if !it.started {
-		// First call to Next - position the iterator
-		it.started = true
-		if it.start != nil {
-			it.iter.Seek(it.start)
-		} else if it.prefix != nil {
-			it.iter.Seek(it.prefix)
-		} else {
-			it.iter.Rewind()
-		}
-	} else {
-		// Subsequent calls - advance the iterator
-		// Check if the database is closed before advancing
-		it.closedMu.RLock()
-		closed := it.db.closed
-		it.closedMu.RUnlock()
-
-		if closed {
-			it.err = db.ErrClosed
-			// Clear cache when database is closed
-			it.cachedKey = nil
-			it.cachedValue = nil
-			return false
-		}
-
-		it.iter.Next()
-	}
-
-	if !it.iter.Valid() {
-		// Clear cache when iterator becomes invalid
-		it.cachedKey = nil
-		it.cachedValue = nil
-		return false
-	}
-
-	// Check if we're still within the prefix
-	if it.prefix != nil {
-		key := it.iter.Item().Key()
-		if !bytes.HasPrefix(key, it.prefix) {
+	// Check if database is closed
+	if i.db != nil {
+		i.db.closeMu.RLock()
+		dbClosed := i.db.closed
+		i.db.closeMu.RUnlock()
+		
+		if dbClosed {
+			i.err = database.ErrClosed
+			i.key = nil
+			i.value = nil
 			return false
 		}
 	}
 
-	// Cache the current key and value
-	it.cachedKey = it.iter.Item().KeyCopy(nil)
-	var err error
-	it.cachedValue, err = it.iter.Item().ValueCopy(nil)
-	if err != nil {
-		it.err = err
-		return false
+	// If this is the first call to Next() and we're already at a valid position
+	if !i.started {
+		i.started = true
+		if i.iter.Valid() {
+			// Check prefix constraint
+			if len(i.prefix) > 0 && !bytes.HasPrefix(i.iter.Item().Key(), i.prefix) {
+				i.key = nil
+				i.value = nil
+				return false
+			}
+			// Store current key/value
+			i.key = i.getKey()
+			i.value = i.getValue()
+			return true
+		}
 	}
 
+	i.iter.Next()
+	
+	// Check if we're still valid and within prefix bounds
+	if !i.iter.Valid() {
+		i.key = nil
+		i.value = nil
+		return false
+	}
+	
+	if len(i.prefix) > 0 && !bytes.HasPrefix(i.iter.Item().Key(), i.prefix) {
+		i.key = nil
+		i.value = nil
+		return false
+	}
+	
+	// Store current key/value
+	i.key = i.getKey()
+	i.value = i.getValue()
 	return true
 }
 
 // Error implements the Iterator interface
-func (it *iterator) Error() error {
-	if it.err != nil {
-		return it.err
-	}
-	return nil
+func (i *iterator) Error() error {
+	i.mu.RLock()
+	defer i.mu.RUnlock()
+
+	return i.err
 }
 
 // Key implements the Iterator interface
-func (it *iterator) Key() []byte {
-	// If there's an error (like database closed), return nil
-	if it.err != nil {
+func (i *iterator) Key() []byte {
+	i.mu.RLock()
+	defer i.mu.RUnlock()
+
+	return i.key
+}
+
+// getKey returns a copy of the current iterator key
+func (i *iterator) getKey() []byte {
+	if i.closed || i.iter == nil || !i.iter.Valid() {
 		return nil
 	}
-	// Return cached key if available (handles closed DB case)
-	if it.cachedKey != nil {
-		return it.cachedKey
+	
+	key := i.iter.Item().Key()
+	// Check if this is our empty key placeholder
+	if bytes.Equal(key, emptyKeyPlaceholder) {
+		return []byte{}
 	}
-	if it.iter == nil || !it.iter.Valid() {
-		return nil
-	}
-	return it.iter.Item().KeyCopy(nil)
+	return append([]byte{}, key...)
 }
 
 // Value implements the Iterator interface
-func (it *iterator) Value() []byte {
-	// If there's an error (like database closed), return nil
-	if it.err != nil {
+func (i *iterator) Value() []byte {
+	i.mu.RLock()
+	defer i.mu.RUnlock()
+
+	return i.value
+}
+
+// getValue returns a copy of the current iterator value
+func (i *iterator) getValue() []byte {
+	if i.closed || i.iter == nil || !i.iter.Valid() {
 		return nil
 	}
-	// Return cached value if available (handles closed DB case)
-	if it.cachedValue != nil {
-		return it.cachedValue
-	}
-	if it.iter == nil || !it.iter.Valid() {
-		return nil
-	}
-	val, err := it.iter.Item().ValueCopy(nil)
+
+	value, err := i.iter.Item().ValueCopy(nil)
 	if err != nil {
-		it.err = err
 		return nil
 	}
-	return val
+	return value
 }
 
 // Release implements the Iterator interface
-func (it *iterator) Release() {
-	if it.iter != nil {
-		it.iter.Close()
-		it.iter = nil
-	}
-	if it.txn != nil {
-		it.txn.Discard()
-		it.txn = nil
+func (i *iterator) Release() {
+	i.mu.Lock()
+	defer i.mu.Unlock()
+
+	if !i.closed {
+		i.closed = true
+		i.key = nil
+		i.value = nil
+		if i.iter != nil {
+			i.iter.Close()
+		}
+		i.txn.Discard()
 	}
 }
+
+// nopIterator is a no-op iterator that returns an error
+type nopIterator struct {
+	err error
+}
+
+func (n *nopIterator) Next() bool       { return false }
+func (n *nopIterator) Error() error     { return n.err }
+func (n *nopIterator) Key() []byte      { return nil }
+func (n *nopIterator) Value() []byte    { return nil }
+func (n *nopIterator) Release()         {}

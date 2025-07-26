@@ -7,7 +7,7 @@
 package factory
 
 import (
-	"github.com/luxfi/database"
+	db "github.com/luxfi/database"
 )
 
 func newPebbleDB(config DatabaseConfig) (db.Database, error) {

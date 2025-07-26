@@ -18,7 +18,7 @@ import (
 )
 
 var (
-	_ db.Iterator = (*iter)(nil)
+	_ database.Iterator = (*iter)(nil)
 
 	errCouldNotGetValue = errors.New("could not get iterator value")
 )
@@ -53,7 +53,7 @@ func (it *iter) Next() bool {
 		return false
 	case it.closed:
 		it.hasNext = false
-		it.err = db.ErrClosed
+		it.err = database.ErrClosed
 		return false
 	case !it.initialized:
 		it.hasNext = it.iter.First()

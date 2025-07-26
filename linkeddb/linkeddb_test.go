@@ -8,15 +8,15 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/luxfi/database"
+	database "github.com/luxfi/database"
 	"github.com/luxfi/database/memdb"
 )
 
 func TestLinkedDB(t *testing.T) {
 	require := require.New(t)
 
-	database := memdatabase.New()
-	ldb := NewDefault(database)
+	db := memdb.New()
+	ldb := NewDefault(db)
 
 	key := []byte("hello")
 	value := []byte("world")
@@ -57,8 +57,8 @@ func TestLinkedDB(t *testing.T) {
 func TestLinkedDBDuplicatedPut(t *testing.T) {
 	require := require.New(t)
 
-	database := memdatabase.New()
-	ldb := NewDefault(database)
+	db := memdb.New()
+	ldb := NewDefault(db)
 
 	key := []byte("hello")
 	value1 := []byte("world1")
@@ -82,8 +82,8 @@ func TestLinkedDBDuplicatedPut(t *testing.T) {
 func TestLinkedDBMultiplePuts(t *testing.T) {
 	require := require.New(t)
 
-	database := memdatabase.New()
-	ldb := NewDefault(database)
+	db := memdb.New()
+	ldb := NewDefault(db)
 
 	key1 := []byte("hello1")
 	key2 := []byte("hello2")
@@ -125,8 +125,8 @@ func TestLinkedDBMultiplePuts(t *testing.T) {
 func TestEmptyLinkedDBIterator(t *testing.T) {
 	require := require.New(t)
 
-	database := memdatabase.New()
-	ldb := NewDefault(database)
+	db := memdb.New()
+	ldb := NewDefault(db)
 
 	iterator := ldb.NewIterator()
 	next := iterator.Next()
@@ -146,15 +146,15 @@ func TestEmptyLinkedDBIterator(t *testing.T) {
 func TestLinkedDBLoadHeadKey(t *testing.T) {
 	require := require.New(t)
 
-	database := memdatabase.New()
-	ldb := NewDefault(database)
+	db := memdb.New()
+	ldb := NewDefault(db)
 
 	key := []byte("hello")
 	value := []byte("world")
 
 	require.NoError(ldb.Put(key, value))
 
-	ldb = NewDefault(database)
+	ldb = NewDefault(db)
 
 	iterator := ldb.NewIterator()
 	next := iterator.Next()
@@ -183,8 +183,8 @@ func TestLinkedDBLoadHeadKey(t *testing.T) {
 func TestSingleLinkedDBIterator(t *testing.T) {
 	require := require.New(t)
 
-	database := memdatabase.New()
-	ldb := NewDefault(database)
+	db := memdb.New()
+	ldb := NewDefault(db)
 
 	key := []byte("hello")
 	value := []byte("world")
@@ -218,8 +218,8 @@ func TestSingleLinkedDBIterator(t *testing.T) {
 func TestMultipleLinkedDBIterator(t *testing.T) {
 	require := require.New(t)
 
-	database := memdatabase.New()
-	ldb := NewDefault(database)
+	db := memdb.New()
+	ldb := NewDefault(db)
 
 	key0 := []byte("hello0")
 	key1 := []byte("hello1")
@@ -260,8 +260,8 @@ func TestMultipleLinkedDBIterator(t *testing.T) {
 func TestMultipleLinkedDBIteratorStart(t *testing.T) {
 	require := require.New(t)
 
-	database := memdatabase.New()
-	ldb := NewDefault(database)
+	db := memdb.New()
+	ldb := NewDefault(db)
 
 	key0 := []byte("hello0")
 	key1 := []byte("hello1")
@@ -302,8 +302,8 @@ func TestMultipleLinkedDBIteratorStart(t *testing.T) {
 func TestSingleLinkedDBIteratorStart(t *testing.T) {
 	require := require.New(t)
 
-	database := memdatabase.New()
-	ldb := NewDefault(database)
+	db := memdb.New()
+	ldb := NewDefault(db)
 
 	key0 := []byte("hello0")
 	key1 := []byte("hello1")
@@ -338,8 +338,8 @@ func TestSingleLinkedDBIteratorStart(t *testing.T) {
 func TestEmptyLinkedDBIteratorStart(t *testing.T) {
 	require := require.New(t)
 
-	database := memdatabase.New()
-	ldb := NewDefault(database)
+	db := memdb.New()
+	ldb := NewDefault(db)
 
 	key0 := []byte("hello0")
 	key1 := []byte("hello1")
@@ -369,8 +369,8 @@ func TestEmptyLinkedDBIteratorStart(t *testing.T) {
 func TestLinkedDBIsEmpty(t *testing.T) {
 	require := require.New(t)
 
-	database := memdatabase.New()
-	ldb := NewDefault(database)
+	db := memdb.New()
+	ldb := NewDefault(db)
 
 	isEmpty, err := ldb.IsEmpty()
 	require.NoError(err)
@@ -395,8 +395,8 @@ func TestLinkedDBIsEmpty(t *testing.T) {
 func TestLinkedDBHeadKey(t *testing.T) {
 	require := require.New(t)
 
-	database := memdatabase.New()
-	ldb := NewDefault(database)
+	db := memdb.New()
+	ldb := NewDefault(db)
 
 	_, err := ldb.HeadKey()
 	require.Equal(database.ErrNotFound, err)
@@ -428,8 +428,8 @@ func TestLinkedDBHeadKey(t *testing.T) {
 func TestLinkedDBHead(t *testing.T) {
 	require := require.New(t)
 
-	database := memdatabase.New()
-	ldb := NewDefault(database)
+	db := memdb.New()
+	ldb := NewDefault(db)
 
 	_, _, err := ldb.Head()
 	require.Equal(database.ErrNotFound, err)

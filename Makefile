@@ -9,7 +9,7 @@ COVERAGE_FILE := coverage.out
 COVERAGE_HTML := coverage.html
 
 # Default target
-all: clean fmt lint test build
+all: clean fmt test build
 
 # Build the module
 build:

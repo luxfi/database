@@ -9,7 +9,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/luxfi/database"
+	db "github.com/luxfi/database"
 	"github.com/luxfi/database/leveldb"
 	"github.com/luxfi/database/memdb"
 	"github.com/luxfi/database/metricdb"
