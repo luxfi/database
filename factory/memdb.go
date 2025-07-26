@@ -4,10 +4,18 @@
 package factory
 
 import (
-	db "github.com/luxfi/database"
+	"github.com/luxfi/database"
 	"github.com/luxfi/database/memdb"
+	"github.com/prometheus/client_golang/prometheus"
+	"go.uber.org/zap"
 )
 
-func newMemDB(config DatabaseConfig) (db.Database, error) {
+func newMemDB(
+	dbPath string,
+	config []byte,
+	logger *zap.Logger,
+	registerer prometheus.Registerer,
+	metricsPrefix string,
+) (database.Database, error) {
 	return memdb.New(), nil
 }

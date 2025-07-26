@@ -6,31 +6,84 @@ package factory
 import (
 	"fmt"
 
-	db "github.com/luxfi/database"
+	"github.com/luxfi/database"
+	"github.com/luxfi/database/badgerdb"
+	"github.com/luxfi/database/corruptabledb"
+	"github.com/luxfi/database/leveldb"
+	"github.com/luxfi/database/logging"
+	"github.com/luxfi/database/memdb"
+	"github.com/luxfi/database/meterdb"
+	"github.com/luxfi/database/pebbledb"
+	"github.com/luxfi/database/versiondb"
 	"github.com/prometheus/client_golang/prometheus"
+	"go.uber.org/zap"
 )
 
-// DatabaseConfig contains all the parameters necessary to create a database
-type DatabaseConfig struct {
-	Name       string
-	Dir        string
-	Config     []byte
-	Type       string // "leveldb", "pebbledb", "badgerdb", "memdb"
-	MetricsReg prometheus.Registerer
-}
+// New creates a new database with the provided configuration
+func New(
+	name string,
+	dbPath string,
+	readOnly bool,
+	config []byte,
+	gatherer interface{}, // Can be prometheus.Gatherer or metrics.MultiGatherer
+	logger *zap.Logger,
+	metricsPrefix string,
+	meterDBRegName string,
+) (database.Database, error) {
+	var db database.Database
+	var err error
 
-// New creates a new database based on the config
-func New(config DatabaseConfig) (db.Database, error) {
-	switch config.Type {
-	case "leveldb":
-		return newLevelDB(config)
-	case "pebbledb":
-		return newPebbleDB(config)
-	case "badgerdb":
-		return newBadgerDB(config)
-	case "memdb":
-		return newMemDB(config)
-	default:
-		return nil, fmt.Errorf("unknown database type: %s", config.Type)
+	// Try to create a prometheus.Registerer from the gatherer
+	var registerer prometheus.Registerer
+	if reg, ok := gatherer.(prometheus.Registerer); ok {
+		registerer = reg
+	} else if multiGatherer, ok := gatherer.(interface {
+		Register(string, prometheus.Gatherer) error
+	}); ok {
+		// Create a registry and register it with the MultiGatherer
+		reg := prometheus.NewRegistry()
+		if err := multiGatherer.Register(metricsPrefix, reg); err != nil {
+			return nil, fmt.Errorf("couldn't register %q metrics: %w", metricsPrefix, err)
+		}
+		registerer = reg
 	}
+
+	switch name {
+	case leveldb.Name:
+		db, err = newLevelDB(dbPath, config, logger, registerer, metricsPrefix)
+	case pebbledb.Name:
+		db, err = newPebbleDB(dbPath, config, logger, registerer, metricsPrefix)
+	case badgerdb.Name:
+		db, err = newBadgerDB(dbPath, config, logger, registerer, metricsPrefix)
+	case memdb.Name:
+		db = memdb.New()
+	default:
+		return nil, fmt.Errorf("unknown database type: %s", name)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	// Create a logging adapter for the logger
+	log := logging.NewZapAdapter(logger)
+
+	// Wrap with corruptabledb
+	db = corruptabledb.New(db, log)
+
+	// Wrap with versiondb if read-only (except memdb)
+	if readOnly && name != memdb.Name {
+		db = versiondb.New(db)
+	}
+
+	// Wrap with meterdb for metrics if we have a registerer
+	if registerer != nil {
+		meterDB, err := meterdb.New(registerer, db)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create meterdb: %w", err)
+		}
+		return meterDB, nil
+	}
+
+	return db, nil
 }
