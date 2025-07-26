@@ -20,7 +20,7 @@ import (
 var errTest = errors.New("non-nil error")
 
 func newDB() *Database {
-	baseDB := memdb.New()
+	baseDB := memdatabase.New()
 	return New(baseDB, logging.NoLogger)
 }
 
@@ -48,31 +48,31 @@ func FuzzNewIteratorWithStartAndPrefix(f *testing.F) {
 func TestCorruption(t *testing.T) {
 	key := []byte("hello")
 	value := []byte("world")
-	tests := map[string]func(db db.Database) error{
-		"corrupted has": func(db db.Database) error {
-			_, err := db.Has(key)
+	tests := map[string]func(db database.Database) error{
+		"corrupted has": func(db database.Database) error {
+			_, err := database.Has(key)
 			return err
 		},
-		"corrupted get": func(db db.Database) error {
-			_, err := db.Get(key)
+		"corrupted get": func(db database.Database) error {
+			_, err := database.Get(key)
 			return err
 		},
-		"corrupted put": func(db db.Database) error {
-			return db.Put(key, value)
+		"corrupted put": func(db database.Database) error {
+			return database.Put(key, value)
 		},
-		"corrupted delete": func(db db.Database) error {
-			return db.Delete(key)
+		"corrupted delete": func(db database.Database) error {
+			return database.Delete(key)
 		},
-		"corrupted batch": func(db db.Database) error {
-			corruptableBatch := db.NewBatch()
+		"corrupted batch": func(db database.Database) error {
+			corruptableBatch := database.NewBatch()
 			require.NotNil(t, corruptableBatch)
 
 			require.NoError(t, corruptableBatch.Put(key, value))
 
 			return corruptableBatch.Write()
 		},
-		"corrupted healthcheck": func(db db.Database) error {
-			err := db.HealthCheck()
+		"corrupted healthcheck": func(db database.Database) error {
+			err := database.HealthCheck()
 			return err
 		},
 	}

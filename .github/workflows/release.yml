@@ -1,0 +1,83 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+      - 'database/v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    name: Test Before Release
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.21'
+    
+    - name: Install dependencies
+      run: |
+        go mod download
+        make install-tools
+    
+    - name: Run tests
+      run: make test
+    
+    - name: Run linter
+      run: make lint
+
+  release:
+    name: Create Release
+    needs: test
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.21'
+    
+    - name: Build binaries
+      run: |
+        # Build for multiple platforms
+        GOOS=linux GOARCH=amd64 go build -o dist/database-linux-amd64 ./...
+        GOOS=linux GOARCH=arm64 go build -o dist/database-linux-arm64 ./...
+        GOOS=darwin GOARCH=amd64 go build -o dist/database-darwin-amd64 ./...
+        GOOS=darwin GOARCH=arm64 go build -o dist/database-darwin-arm64 ./...
+        GOOS=windows GOARCH=amd64 go build -o dist/database-windows-amd64.exe ./...
+    
+    - name: Generate changelog
+      id: changelog
+      uses: mikepenz/release-changelog-builder-action@v4
+      with:
+        configuration: ".github/changelog-config.json"
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        body: ${{ steps.changelog.outputs.changelog }}
+        files: |
+          dist/*
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Update Go Module Index
+      run: |
+        curl -X POST https://proxy.golang.org/github.com/luxfi/database/@v/${{ github.ref_name }}.info

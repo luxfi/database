@@ -12,14 +12,14 @@ import (
 // Database partitions a database into a sub-database by prefixing all keys with
 // a unique value.
 type Database struct {
-	db     db.Database
+	db     database.Database
 	prefix []byte
 
 	bufferPool sync.Pool
 }
 
 // New returns a new prefixed database.
-func New(prefix []byte, db db.Database) *Database {
+func New(prefix []byte, db database.Database) *Database {
 	return &Database{
 		db:     db,
 		prefix: prefix,
@@ -32,65 +32,65 @@ func New(prefix []byte, db db.Database) *Database {
 }
 
 // Deprecated: Use [New] instead.
-func NewNested(prefix []byte, db db.Database) *Database {
+func NewNested(prefix []byte, db database.Database) *Database {
 	return New(prefix, db)
 }
 
-// Close implements the db.Database interface.
+// Close implements the database.Database interface.
 func (p *Database) Close() error {
 	return p.db.Close()
 }
 
-// HealthCheck implements the db.Database interface.
+// HealthCheck implements the database.Database interface.
 func (p *Database) HealthCheck() error {
 	return p.db.HealthCheck()
 }
 
-// Has implements the db.Database interface.
+// Has implements the database.Database interface.
 func (p *Database) Has(key []byte) (bool, error) {
 	return p.db.Has(p.prefixKey(key))
 }
 
-// Get implements the db.Database interface.
+// Get implements the database.Database interface.
 func (p *Database) Get(key []byte) ([]byte, error) {
 	return p.db.Get(p.prefixKey(key))
 }
 
-// Put implements the db.Database interface.
+// Put implements the database.Database interface.
 func (p *Database) Put(key, value []byte) error {
 	return p.db.Put(p.prefixKey(key), value)
 }
 
-// Delete implements the db.Database interface.
+// Delete implements the database.Database interface.
 func (p *Database) Delete(key []byte) error {
 	return p.db.Delete(p.prefixKey(key))
 }
 
-// NewBatch implements the db.Database interface.
-func (p *Database) NewBatch() db.Batch {
+// NewBatch implements the database.Database interface.
+func (p *Database) NewBatch() database.Batch {
 	return &batch{
 		Batch:  p.db.NewBatch(),
 		prefix: p,
 	}
 }
 
-// NewIterator implements the db.Database interface.
-func (p *Database) NewIterator() db.Iterator {
+// NewIterator implements the database.Database interface.
+func (p *Database) NewIterator() database.Iterator {
 	return p.NewIteratorWithStartAndPrefix(nil, nil)
 }
 
-// NewIteratorWithStart implements the db.Database interface.
-func (p *Database) NewIteratorWithStart(start []byte) db.Iterator {
+// NewIteratorWithStart implements the database.Database interface.
+func (p *Database) NewIteratorWithStart(start []byte) database.Iterator {
 	return p.NewIteratorWithStartAndPrefix(start, nil)
 }
 
-// NewIteratorWithPrefix implements the db.Database interface.
-func (p *Database) NewIteratorWithPrefix(prefix []byte) db.Iterator {
+// NewIteratorWithPrefix implements the database.Database interface.
+func (p *Database) NewIteratorWithPrefix(prefix []byte) database.Iterator {
 	return p.NewIteratorWithStartAndPrefix(nil, prefix)
 }
 
-// NewIteratorWithStartAndPrefix implements the db.Database interface.
-func (p *Database) NewIteratorWithStartAndPrefix(start, prefix []byte) db.Iterator {
+// NewIteratorWithStartAndPrefix implements the database.Database interface.
+func (p *Database) NewIteratorWithStartAndPrefix(start, prefix []byte) database.Iterator {
 	prefixedStart := append(p.prefix, start...)
 	prefixedPrefix := append(p.prefix, prefix...)
 	return &iterator{
@@ -99,7 +99,7 @@ func (p *Database) NewIteratorWithStartAndPrefix(start, prefix []byte) db.Iterat
 	}
 }
 
-// Compact implements the db.Database interface.
+// Compact implements the database.Database interface.
 func (p *Database) Compact(start, limit []byte) error {
 	if start != nil {
 		start = p.prefixKey(start)
@@ -133,34 +133,34 @@ func (p *Database) removePrefix(key []byte) []byte {
 	return key[len(p.prefix):]
 }
 
-// batch wraps a db.Batch to add a prefix to all keys.
+// batch wraps a database.Batch to add a prefix to all keys.
 type batch struct {
-	db.Batch
+	database.Batch
 	prefix *Database
 }
 
-// Put implements the db.Batch interface.
+// Put implements the database.Batch interface.
 func (b *batch) Put(key, value []byte) error {
 	return b.Batch.Put(b.prefix.prefixKey(key), value)
 }
 
-// Delete implements the db.Batch interface.
+// Delete implements the database.Batch interface.
 func (b *batch) Delete(key []byte) error {
 	return b.Batch.Delete(b.prefix.prefixKey(key))
 }
 
-// Inner implements the db.Batch interface.
-func (b *batch) Inner() db.Batch {
+// Inner implements the database.Batch interface.
+func (b *batch) Inner() database.Batch {
 	return b.Batch
 }
 
-// iterator wraps a db.Iterator to remove the prefix from all keys.
+// iterator wraps a database.Iterator to remove the prefix from all keys.
 type iterator struct {
-	db.Iterator
+	database.Iterator
 	prefix *Database
 }
 
-// Key implements the db.Iterator interface.
+// Key implements the database.Iterator interface.
 func (it *iterator) Key() []byte {
 	key := it.Iterator.Key()
 	if key == nil {
@@ -169,7 +169,7 @@ func (it *iterator) Key() []byte {
 	return it.prefix.removePrefix(key)
 }
 
-// Error implements the db.Iterator interface.
+// Error implements the database.Iterator interface.
 func (it *iterator) Error() error {
 	return it.Iterator.Error()
 }

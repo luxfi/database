@@ -14,19 +14,19 @@ import (
 type Database struct {
 	lock sync.RWMutex
 
-	baseDB    db.Database
+	baseDB    database.Database
 	versions  map[string]*version
 	currentID string
 }
 
-// version represents a specific version of the database.
+// version represents a specific version of the db.
 type version struct {
 	parentID string
-	db       db.Database
+	db       database.Database
 }
 
-// New returns a new versioned database.
-func New(baseDB db.Database) *Database {
+// New returns a new versioned db.
+func New(baseDB database.Database) *Database {
 	mainVersion := &version{
 		db: baseDB,
 	}
@@ -37,7 +37,7 @@ func New(baseDB db.Database) *Database {
 	}
 }
 
-// Close implements the db.Database interface.
+// Close implements the database.Database interface.
 func (db *Database) Close() error {
 	db.lock.Lock()
 	defer db.lock.Unlock()
@@ -45,7 +45,7 @@ func (db *Database) Close() error {
 	return db.baseDB.Close()
 }
 
-// HealthCheck implements the db.Database interface.
+// HealthCheck implements the database.Database interface.
 func (db *Database) HealthCheck() error {
 	db.lock.RLock()
 	defer db.lock.RUnlock()
@@ -53,8 +53,8 @@ func (db *Database) HealthCheck() error {
 	return db.baseDB.HealthCheck()
 }
 
-// Current returns the current version database.
-func (db *Database) Current() db.Database {
+// Current returns the current version db.
+func (db *Database) Current() database.Database {
 	db.lock.RLock()
 	defer db.lock.RUnlock()
 
@@ -62,7 +62,7 @@ func (db *Database) Current() db.Database {
 }
 
 // SetDatabase sets the underlying database for the current version.
-func (db *Database) SetDatabase(newDB db.Database) error {
+func (db *Database) SetDatabase(newDB database.Database) error {
 	db.lock.Lock()
 	defer db.lock.Unlock()
 
@@ -102,52 +102,52 @@ func (db *Database) SetVersion(versionID string) error {
 	return nil
 }
 
-// Has implements the db.Database interface.
+// Has implements the database.Database interface.
 func (db *Database) Has(key []byte) (bool, error) {
 	return db.Current().Has(key)
 }
 
-// Get implements the db.Database interface.
+// Get implements the database.Database interface.
 func (db *Database) Get(key []byte) ([]byte, error) {
 	return db.Current().Get(key)
 }
 
-// Put implements the db.Database interface.
+// Put implements the database.Database interface.
 func (db *Database) Put(key []byte, value []byte) error {
 	return db.Current().Put(key, value)
 }
 
-// Delete implements the db.Database interface.
+// Delete implements the database.Database interface.
 func (db *Database) Delete(key []byte) error {
 	return db.Current().Delete(key)
 }
 
-// NewBatch implements the db.Database interface.
-func (db *Database) NewBatch() db.Batch {
+// NewBatch implements the database.Database interface.
+func (db *Database) NewBatch() database.Batch {
 	return db.Current().NewBatch()
 }
 
-// NewIterator implements the db.Database interface.
-func (db *Database) NewIterator() db.Iterator {
+// NewIterator implements the database.Database interface.
+func (db *Database) NewIterator() database.Iterator {
 	return db.Current().NewIterator()
 }
 
-// NewIteratorWithStart implements the db.Database interface.
-func (db *Database) NewIteratorWithStart(start []byte) db.Iterator {
+// NewIteratorWithStart implements the database.Database interface.
+func (db *Database) NewIteratorWithStart(start []byte) database.Iterator {
 	return db.Current().NewIteratorWithStart(start)
 }
 
-// NewIteratorWithPrefix implements the db.Database interface.
-func (db *Database) NewIteratorWithPrefix(prefix []byte) db.Iterator {
+// NewIteratorWithPrefix implements the database.Database interface.
+func (db *Database) NewIteratorWithPrefix(prefix []byte) database.Iterator {
 	return db.Current().NewIteratorWithPrefix(prefix)
 }
 
-// NewIteratorWithStartAndPrefix implements the db.Database interface.
-func (db *Database) NewIteratorWithStartAndPrefix(start, prefix []byte) db.Iterator {
+// NewIteratorWithStartAndPrefix implements the database.Database interface.
+func (db *Database) NewIteratorWithStartAndPrefix(start, prefix []byte) database.Iterator {
 	return db.Current().NewIteratorWithStartAndPrefix(start, prefix)
 }
 
-// Compact implements the db.Database interface.
+// Compact implements the database.Database interface.
 func (db *Database) Compact(start []byte, limit []byte) error {
 	return db.Current().Compact(start, limit)
 }

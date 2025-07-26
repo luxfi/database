@@ -12,18 +12,18 @@ import (
 )
 
 var (
-	_ db.Database = (*Database)(nil)
-	_ db.Batch    = (*batch)(nil)
+	_ database.Database = (*Database)(nil)
+	_ database.Batch    = (*batch)(nil)
 
 	// Import errors from db package
-	ErrNotFound = db.ErrNotFound
-	ErrClosed   = db.ErrClosed
+	ErrNotFound = database.ErrNotFound
+	ErrClosed   = database.ErrClosed
 )
 
 // CorruptableDB is a wrapper around Database
 // it prevents any future calls in case of a corruption occurs
 type Database struct {
-	db.Database
+	database.Database
 
 	log logging.Logger
 	// initialError stores the error other than "not found" or "closed" while
@@ -34,7 +34,7 @@ type Database struct {
 }
 
 // New returns a new prefixed database
-func New(database db.Database, log logging.Logger) *Database {
+func New(database database.Database, log logging.Logger) *Database {
 	return &Database{
 		Database: database,
 		log:      log,
@@ -93,35 +93,35 @@ func (db *Database) HealthCheck() error {
 	return db.Database.HealthCheck()
 }
 
-func (db *Database) NewBatch() db.Batch {
+func (db *Database) NewBatch() database.Batch {
 	return &batch{
 		Batch: db.Database.NewBatch(),
 		db:    db,
 	}
 }
 
-func (db *Database) NewIterator() db.Iterator {
+func (db *Database) NewIterator() database.Iterator {
 	return &iterator{
 		Iterator: db.Database.NewIterator(),
 		db:       db,
 	}
 }
 
-func (db *Database) NewIteratorWithStart(start []byte) db.Iterator {
+func (db *Database) NewIteratorWithStart(start []byte) database.Iterator {
 	return &iterator{
 		Iterator: db.Database.NewIteratorWithStart(start),
 		db:       db,
 	}
 }
 
-func (db *Database) NewIteratorWithPrefix(prefix []byte) db.Iterator {
+func (db *Database) NewIteratorWithPrefix(prefix []byte) database.Iterator {
 	return &iterator{
 		Iterator: db.Database.NewIteratorWithPrefix(prefix),
 		db:       db,
 	}
 }
 
-func (db *Database) NewIteratorWithStartAndPrefix(start, prefix []byte) db.Iterator {
+func (db *Database) NewIteratorWithStartAndPrefix(start, prefix []byte) database.Iterator {
 	return &iterator{
 		Iterator: db.Database.NewIteratorWithStartAndPrefix(start, prefix),
 		db:       db,
@@ -159,7 +159,7 @@ func (db *Database) handleError(err error) error {
 
 // batch is a wrapper around the batch to contain sizes.
 type batch struct {
-	db.Batch
+	database.Batch
 	db *Database
 }
 
@@ -172,7 +172,7 @@ func (b *batch) Write() error {
 }
 
 type iterator struct {
-	db.Iterator
+	database.Iterator
 	db *Database
 }
 

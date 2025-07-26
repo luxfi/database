@@ -13,8 +13,8 @@ import (
 	"github.com/luxfi/database/corruptabledb"
 	"github.com/luxfi/database/dbtest"
 	"github.com/luxfi/database/memdb"
-	"github.com/luxfi/node/utils/logging"
-	"github.com/luxfi/node/vms/rpcchainvm/grpcutils"
+	"github.com/luxfi/database/utils/logging"
+	"github.com/luxfi/database/vms/rpcchainvm/grpcutils"
 
 	rpcdbpb "github.com/luxfi/database/proto/pb/rpcdb"
 )

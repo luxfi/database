@@ -12,7 +12,7 @@ import (
 
 // Database wraps a database and records metrics for each operation.
 type Database struct {
-	db db.Database
+	db database.Database
 
 	readDuration  prometheus.Histogram
 	writeDuration prometheus.Histogram
@@ -24,7 +24,7 @@ type Database struct {
 }
 
 // New returns a new database that records metrics.
-func New(namespace string, db db.Database, registerer prometheus.Registerer) (*Database, error) {
+func New(namespace string, db database.Database, registerer prometheus.Registerer) (*Database, error) {
 	readDuration := prometheus.NewHistogram(prometheus.HistogramOpts{
 		Namespace: namespace,
 		Name:      "db_read_duration",
@@ -101,95 +101,95 @@ func New(namespace string, db db.Database, registerer prometheus.Registerer) (*D
 	}, nil
 }
 
-// Close implements the db.Database interface.
+// Close implements the database.Database interface.
 func (mdb *Database) Close() error {
-	return mdb.db.Close()
+	return mdatabase.database.Close()
 }
 
-// HealthCheck implements the db.Database interface.
+// HealthCheck implements the database.Database interface.
 func (mdb *Database) HealthCheck() error {
-	return mdb.db.HealthCheck()
+	return mdatabase.database.HealthCheck()
 }
 
-// Has implements the db.Database interface.
+// Has implements the database.Database interface.
 func (mdb *Database) Has(key []byte) (bool, error) {
 	start := time.Now()
-	has, err := mdb.db.Has(key)
-	mdb.readDuration.Observe(time.Since(start).Seconds())
-	mdb.readCount.Inc()
+	has, err := mdatabase.database.Has(key)
+	mdatabase.readDuration.Observe(time.Since(start).Seconds())
+	mdatabase.readCount.Inc()
 	return has, err
 }
 
-// Get implements the db.Database interface.
+// Get implements the database.Database interface.
 func (mdb *Database) Get(key []byte) ([]byte, error) {
 	start := time.Now()
-	value, err := mdb.db.Get(key)
-	mdb.readDuration.Observe(time.Since(start).Seconds())
-	mdb.readCount.Inc()
+	value, err := mdatabase.database.Get(key)
+	mdatabase.readDuration.Observe(time.Since(start).Seconds())
+	mdatabase.readCount.Inc()
 	if err == nil {
-		mdb.readSize.Observe(float64(len(value)))
+		mdatabase.readSize.Observe(float64(len(value)))
 	}
 	return value, err
 }
 
-// Put implements the db.Database interface.
+// Put implements the database.Database interface.
 func (mdb *Database) Put(key []byte, value []byte) error {
 	start := time.Now()
-	err := mdb.db.Put(key, value)
-	mdb.writeDuration.Observe(time.Since(start).Seconds())
-	mdb.writeCount.Inc()
-	mdb.writeSize.Observe(float64(len(key) + len(value)))
+	err := mdatabase.database.Put(key, value)
+	mdatabase.writeDuration.Observe(time.Since(start).Seconds())
+	mdatabase.writeCount.Inc()
+	mdatabase.writeSize.Observe(float64(len(key) + len(value)))
 	return err
 }
 
-// Delete implements the db.Database interface.
+// Delete implements the database.Database interface.
 func (mdb *Database) Delete(key []byte) error {
 	start := time.Now()
-	err := mdb.db.Delete(key)
-	mdb.writeDuration.Observe(time.Since(start).Seconds())
-	mdb.deleteCount.Inc()
+	err := mdatabase.database.Delete(key)
+	mdatabase.writeDuration.Observe(time.Since(start).Seconds())
+	mdatabase.deleteCount.Inc()
 	return err
 }
 
-// NewBatch implements the db.Database interface.
-func (mdb *Database) NewBatch() db.Batch {
+// NewBatch implements the database.Database interface.
+func (mdb *Database) NewBatch() database.Batch {
 	return &batch{
-		Batch:         mdb.db.NewBatch(),
-		writeDuration: mdb.writeDuration,
-		writeSize:     mdb.writeSize,
-		writeCount:    mdb.writeCount,
-		deleteCount:   mdb.deleteCount,
+		Batch:         mdatabase.database.NewBatch(),
+		writeDuration: mdatabase.writeDuration,
+		writeSize:     mdatabase.writeSize,
+		writeCount:    mdatabase.writeCount,
+		deleteCount:   mdatabase.deleteCount,
 	}
 }
 
-// NewIterator implements the db.Database interface.
-func (mdb *Database) NewIterator() db.Iterator {
-	return mdb.db.NewIterator()
+// NewIterator implements the database.Database interface.
+func (mdb *Database) NewIterator() database.Iterator {
+	return mdatabase.database.NewIterator()
 }
 
-// NewIteratorWithStart implements the db.Database interface.
-func (mdb *Database) NewIteratorWithStart(start []byte) db.Iterator {
-	return mdb.db.NewIteratorWithStart(start)
+// NewIteratorWithStart implements the database.Database interface.
+func (mdb *Database) NewIteratorWithStart(start []byte) database.Iterator {
+	return mdatabase.database.NewIteratorWithStart(start)
 }
 
-// NewIteratorWithPrefix implements the db.Database interface.
-func (mdb *Database) NewIteratorWithPrefix(prefix []byte) db.Iterator {
-	return mdb.db.NewIteratorWithPrefix(prefix)
+// NewIteratorWithPrefix implements the database.Database interface.
+func (mdb *Database) NewIteratorWithPrefix(prefix []byte) database.Iterator {
+	return mdatabase.database.NewIteratorWithPrefix(prefix)
 }
 
-// NewIteratorWithStartAndPrefix implements the db.Database interface.
-func (mdb *Database) NewIteratorWithStartAndPrefix(start, prefix []byte) db.Iterator {
-	return mdb.db.NewIteratorWithStartAndPrefix(start, prefix)
+// NewIteratorWithStartAndPrefix implements the database.Database interface.
+func (mdb *Database) NewIteratorWithStartAndPrefix(start, prefix []byte) database.Iterator {
+	return mdatabase.database.NewIteratorWithStartAndPrefix(start, prefix)
 }
 
-// Compact implements the db.Database interface.
+// Compact implements the database.Database interface.
 func (mdb *Database) Compact(start []byte, limit []byte) error {
-	return mdb.db.Compact(start, limit)
+	return mdatabase.database.Compact(start, limit)
 }
 
-// batch wraps a db.Batch to record metrics.
+// batch wraps a database.Batch to record metrics.
 type batch struct {
-	db.Batch
+	database.Batch
 
 	writeDuration prometheus.Histogram
 	writeSize     prometheus.Histogram
@@ -199,21 +199,21 @@ type batch struct {
 	size int
 }
 
-// Put implements the db.Batch interface.
+// Put implements the database.Batch interface.
 func (b *batch) Put(key, value []byte) error {
 	b.size += len(key) + len(value)
 	b.writeCount.Inc()
 	return b.Batch.Put(key, value)
 }
 
-// Delete implements the db.Batch interface.
+// Delete implements the database.Batch interface.
 func (b *batch) Delete(key []byte) error {
 	b.size += len(key)
 	b.deleteCount.Inc()
 	return b.Batch.Delete(key)
 }
 
-// Write implements the db.Batch interface.
+// Write implements the database.Batch interface.
 func (b *batch) Write() error {
 	start := time.Now()
 	err := b.Batch.Write()
@@ -222,7 +222,7 @@ func (b *batch) Write() error {
 	return err
 }
 
-// Inner implements the db.Batch interface.
-func (b *batch) Inner() db.Batch {
+// Inner implements the database.Batch interface.
+func (b *batch) Inner() database.Batch {
 	return b.Batch
 }

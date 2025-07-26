@@ -15,7 +15,7 @@ import (
 func TestLinkedDB(t *testing.T) {
 	require := require.New(t)
 
-	database := memdb.New()
+	database := memdatabase.New()
 	ldb := NewDefault(database)
 
 	key := []byte("hello")
@@ -26,7 +26,7 @@ func TestLinkedDB(t *testing.T) {
 	require.False(has)
 
 	_, err = ldb.Get(key)
-	require.Equal(db.ErrNotFound, err)
+	require.Equal(database.ErrNotFound, err)
 
 	require.NoError(ldb.Delete(key))
 
@@ -47,7 +47,7 @@ func TestLinkedDB(t *testing.T) {
 	require.False(has)
 
 	_, err = ldb.Get(key)
-	require.Equal(db.ErrNotFound, err)
+	require.Equal(database.ErrNotFound, err)
 
 	iterator := ldb.NewIterator()
 	require.False(iterator.Next())
@@ -57,7 +57,7 @@ func TestLinkedDB(t *testing.T) {
 func TestLinkedDBDuplicatedPut(t *testing.T) {
 	require := require.New(t)
 
-	database := memdb.New()
+	database := memdatabase.New()
 	ldb := NewDefault(database)
 
 	key := []byte("hello")
@@ -82,7 +82,7 @@ func TestLinkedDBDuplicatedPut(t *testing.T) {
 func TestLinkedDBMultiplePuts(t *testing.T) {
 	require := require.New(t)
 
-	database := memdb.New()
+	database := memdatabase.New()
 	ldb := NewDefault(database)
 
 	key1 := []byte("hello1")
@@ -125,7 +125,7 @@ func TestLinkedDBMultiplePuts(t *testing.T) {
 func TestEmptyLinkedDBIterator(t *testing.T) {
 	require := require.New(t)
 
-	database := memdb.New()
+	database := memdatabase.New()
 	ldb := NewDefault(database)
 
 	iterator := ldb.NewIterator()
@@ -146,7 +146,7 @@ func TestEmptyLinkedDBIterator(t *testing.T) {
 func TestLinkedDBLoadHeadKey(t *testing.T) {
 	require := require.New(t)
 
-	database := memdb.New()
+	database := memdatabase.New()
 	ldb := NewDefault(database)
 
 	key := []byte("hello")
@@ -183,7 +183,7 @@ func TestLinkedDBLoadHeadKey(t *testing.T) {
 func TestSingleLinkedDBIterator(t *testing.T) {
 	require := require.New(t)
 
-	database := memdb.New()
+	database := memdatabase.New()
 	ldb := NewDefault(database)
 
 	key := []byte("hello")
@@ -218,7 +218,7 @@ func TestSingleLinkedDBIterator(t *testing.T) {
 func TestMultipleLinkedDBIterator(t *testing.T) {
 	require := require.New(t)
 
-	database := memdb.New()
+	database := memdatabase.New()
 	ldb := NewDefault(database)
 
 	key0 := []byte("hello0")
@@ -260,7 +260,7 @@ func TestMultipleLinkedDBIterator(t *testing.T) {
 func TestMultipleLinkedDBIteratorStart(t *testing.T) {
 	require := require.New(t)
 
-	database := memdb.New()
+	database := memdatabase.New()
 	ldb := NewDefault(database)
 
 	key0 := []byte("hello0")
@@ -302,7 +302,7 @@ func TestMultipleLinkedDBIteratorStart(t *testing.T) {
 func TestSingleLinkedDBIteratorStart(t *testing.T) {
 	require := require.New(t)
 
-	database := memdb.New()
+	database := memdatabase.New()
 	ldb := NewDefault(database)
 
 	key0 := []byte("hello0")
@@ -338,7 +338,7 @@ func TestSingleLinkedDBIteratorStart(t *testing.T) {
 func TestEmptyLinkedDBIteratorStart(t *testing.T) {
 	require := require.New(t)
 
-	database := memdb.New()
+	database := memdatabase.New()
 	ldb := NewDefault(database)
 
 	key0 := []byte("hello0")
@@ -369,7 +369,7 @@ func TestEmptyLinkedDBIteratorStart(t *testing.T) {
 func TestLinkedDBIsEmpty(t *testing.T) {
 	require := require.New(t)
 
-	database := memdb.New()
+	database := memdatabase.New()
 	ldb := NewDefault(database)
 
 	isEmpty, err := ldb.IsEmpty()
@@ -395,11 +395,11 @@ func TestLinkedDBIsEmpty(t *testing.T) {
 func TestLinkedDBHeadKey(t *testing.T) {
 	require := require.New(t)
 
-	database := memdb.New()
+	database := memdatabase.New()
 	ldb := NewDefault(database)
 
 	_, err := ldb.HeadKey()
-	require.Equal(db.ErrNotFound, err)
+	require.Equal(database.ErrNotFound, err)
 
 	key0 := []byte("hello0")
 	value0 := []byte("world0")
@@ -428,11 +428,11 @@ func TestLinkedDBHeadKey(t *testing.T) {
 func TestLinkedDBHead(t *testing.T) {
 	require := require.New(t)
 
-	database := memdb.New()
+	database := memdatabase.New()
 	ldb := NewDefault(database)
 
 	_, _, err := ldb.Head()
-	require.Equal(db.ErrNotFound, err)
+	require.Equal(database.ErrNotFound, err)
 
 	key0 := []byte("hello0")
 	value0 := []byte("world0")
