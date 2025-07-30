@@ -5,7 +5,7 @@ go 1.24.5
 require (
 	github.com/cockroachdb/pebble v1.1.5
 	github.com/dgraph-io/badger/v4 v4.8.0
-	github.com/luxfi/crypto v1.0.0
+	github.com/luxfi/crypto v0.1.1
 	github.com/luxfi/geth v1.16.2
 	github.com/luxfi/ids v0.0.0-00010101000000-000000000000
 	github.com/luxfi/log v0.1.1
@@ -65,7 +65,5 @@ require (
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-replace github.com/luxfi/crypto => ../crypto
 
 replace github.com/luxfi/ids => ../ids
