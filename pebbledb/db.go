@@ -7,6 +7,7 @@
 package pebbledb
 
 import (
+	"context"
 	"runtime"
 	"sync"
 
@@ -162,14 +163,14 @@ func (d *Database) Close() error {
 }
 
 // HealthCheck returns nil if the database is healthy, or an error otherwise.
-func (d *Database) HealthCheck() error {
+func (d *Database) HealthCheck(ctx context.Context) (interface{}, error) {
 	d.lock.RLock()
 	defer d.lock.RUnlock()
 
 	if d.closed {
-		return database.ErrClosed
+		return nil, database.ErrClosed
 	}
-	return nil
+	return nil, nil
 }
 
 // Has retrieves if a key is present in the key-value store.

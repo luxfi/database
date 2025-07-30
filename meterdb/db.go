@@ -4,6 +4,7 @@
 package meterdb
 
 import (
+	"context"
 	"errors"
 	"time"
 
@@ -236,14 +237,14 @@ func (db *Database) Close() error {
 	return err
 }
 
-func (db *Database) HealthCheck() error {
+func (db *Database) HealthCheck(ctx context.Context) (interface{}, error) {
 	start := time.Now()
-	err := db.db.HealthCheck()
+	details, err := db.db.HealthCheck(ctx)
 	duration := time.Since(start)
 
 	db.calls.With(healthCheckLabel).Inc()
 	db.duration.With(healthCheckLabel).Add(float64(duration))
-	return err
+	return details, err
 }
 
 type batch struct {

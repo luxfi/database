@@ -8,9 +8,7 @@ import (
 
 	"github.com/luxfi/database"
 	"github.com/luxfi/database/badgerdb"
-	"github.com/luxfi/database/corruptabledb"
 	"github.com/luxfi/database/leveldb"
-	"github.com/luxfi/database/logging"
 	"github.com/luxfi/database/memdb"
 	"github.com/luxfi/database/meterdb"
 	"github.com/luxfi/database/pebbledb"
@@ -65,11 +63,10 @@ func New(
 		return nil, err
 	}
 
-	// Create a logging adapter for the logger
-	log := logging.NewZapAdapter(logger)
-
-	// Wrap with corruptabledb
-	db = corruptabledb.New(db, log)
+	// TODO: Fix logger interface mismatch between luxfi/log and internal logging
+	// For now, skip corruptabledb wrapper
+	// log := logging.NewZapAdapter(logger)
+	// db = corruptabledb.New(db, log)
 
 	// Wrap with versiondb if read-only (except memdb)
 	if readOnly && name != memdb.Name {

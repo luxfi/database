@@ -4,11 +4,12 @@
 package corruptabledb
 
 import (
+	"context"
 	"fmt"
 	"sync"
 
 	"github.com/luxfi/database"
-	"github.com/luxfi/database/logging"
+	"github.com/luxfi/log"
 )
 
 var (
@@ -25,7 +26,7 @@ var (
 type Database struct {
 	database.Database
 
-	log logging.Logger
+	log log.Logger
 	// initialError stores the error other than "not found" or "closed" while
 	// performing a db operation. If not nil, Has, Get, Put, Delete and batch
 	// writes will fail with initialError.
@@ -34,7 +35,7 @@ type Database struct {
 }
 
 // New returns a new prefixed database
-func New(database database.Database, log logging.Logger) *Database {
+func New(database database.Database, log log.Logger) *Database {
 	return &Database{
 		Database: database,
 		log:      log,
@@ -86,11 +87,12 @@ func (db *Database) Close() error {
 	return db.handleError(db.Database.Close())
 }
 
-func (db *Database) HealthCheck() error {
+func (db *Database) HealthCheck(ctx context.Context) (interface{}, error) {
 	if err := db.corrupted(); err != nil {
-		return err
+		return nil, err
 	}
-	return db.Database.HealthCheck()
+	details, err := db.Database.HealthCheck(ctx)
+	return details, db.handleError(err)
 }
 
 func (db *Database) NewBatch() database.Batch {

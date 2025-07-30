@@ -93,13 +93,21 @@ func (db *DatabaseServer) Close(context.Context, *rpcdbpb.CloseRequest) (*rpcdbp
 
 // HealthCheck performs a heath check against the underlying database.
 func (db *DatabaseServer) HealthCheck(ctx context.Context, _ *emptypb.Empty) (*rpcdbpb.HealthCheckResponse, error) {
-	err := db.db.HealthCheck()
+	details, err := db.db.HealthCheck(ctx)
 	if err != nil {
 		return &rpcdbpb.HealthCheckResponse{}, err
 	}
 
+	// Marshal the details to JSON
+	detailsBytes := []byte("{}")
+	if details != nil {
+		if jsonBytes, ok := details.([]byte); ok {
+			detailsBytes = jsonBytes
+		}
+	}
+
 	return &rpcdbpb.HealthCheckResponse{
-		Details: []byte("{}"),
+		Details: detailsBytes,
 	}, nil
 }
 
