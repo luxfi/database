@@ -7,6 +7,7 @@
 package leveldb
 
 import (
+	"context"
 	"bytes"
 	"slices"
 	"sync"
@@ -82,12 +83,12 @@ func (d *Database) Close() error {
 }
 
 // HealthCheck implements database.Database.
-func (d *Database) HealthCheck() error {
+func (d *Database) HealthCheck(ctx context.Context) (interface{}, error) {
 	if d.closed.Load() {
-		return database.ErrClosed
+		return nil, database.ErrClosed
 	}
 	_, err := d.db.GetProperty("leveldb.stats")
-	return updateError(err)
+	return nil, updateError(err)
 }
 
 // Has implements database.Database.

@@ -135,9 +135,9 @@ func (db *DatabaseClient) Close() error {
 	return ErrEnumToError[resp.Err]
 }
 
-func (db *DatabaseClient) HealthCheck() error {
+func (db *DatabaseClient) HealthCheck(ctx context.Context) (interface{}, error) {
 	_, err := db.client.HealthCheck(context.Background(), &emptypb.Empty{})
-	return err
+	return nil, err
 }
 
 type batch struct {

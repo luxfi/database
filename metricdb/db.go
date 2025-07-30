@@ -4,6 +4,7 @@
 package metricdb
 
 import (
+	"context"
 	"time"
 
 	"github.com/luxfi/database"
@@ -107,8 +108,8 @@ func (mdb *Database) Close() error {
 }
 
 // HealthCheck implements the database.Database interface.
-func (mdb *Database) HealthCheck() error {
-	return mdb.db.HealthCheck()
+func (mdb *Database) HealthCheck(ctx context.Context) (interface{}, error) {
+	return mdb.db.HealthCheck(ctx)
 }
 
 // Has implements the database.Database interface.

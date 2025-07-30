@@ -4,6 +4,7 @@
 package badgerdb
 
 import (
+	"context"
 	"bytes"
 	"errors"
 	"sync"
@@ -72,15 +73,15 @@ func (d *Database) Close() error {
 }
 
 // HealthCheck returns nil if the database is healthy, non-nil otherwise.
-func (d *Database) HealthCheck() error {
+func (d *Database) HealthCheck(ctx context.Context) (interface{}, error) {
 	d.closeMu.RLock()
 	defer d.closeMu.RUnlock()
 
 	if d.closed {
-		return database.ErrClosed
+		return nil, database.ErrClosed
 	}
 	// BadgerDB doesn't have a direct health check, but we can try a simple operation
-	return d.db.View(func(txn *badger.Txn) error {
+	return nil, d.db.View(func(txn *badger.Txn) error {
 		return nil
 	})
 }

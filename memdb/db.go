@@ -58,14 +58,14 @@ func (db *Database) Close() error {
 }
 
 // HealthCheck implements db.Database.
-func (db *Database) HealthCheck() error {
+func (db *Database) HealthCheck(ctx context.Context) (interface{}, error) {
 	db.lock.RLock()
 	defer db.lock.RUnlock()
 
 	if db.db == nil {
-		return database.ErrClosed
+		return nil, database.ErrClosed
 	}
-	return nil
+	return nil, nil
 }
 
 // Has implements db.Database.

@@ -8,6 +8,7 @@
 package database
 
 import (
+	"context"
 	"io"
 )
 
@@ -90,5 +91,5 @@ type Database interface {
 	Iteratee
 	Compacter
 	io.Closer
-	HealthCheck() error
+	HealthCheck(context.Context) (interface{}, error)
 }
