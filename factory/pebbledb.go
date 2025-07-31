@@ -9,14 +9,14 @@ package factory
 import (
 	"github.com/luxfi/database"
 	"github.com/luxfi/database/pebbledb"
+	"github.com/luxfi/log"
 	"github.com/prometheus/client_golang/prometheus"
-	"go.uber.org/zap"
 )
 
 func newPebbleDB(
 	dbPath string,
 	config []byte,
-	logger *zap.Logger,
+	logger log.Logger,
 	registerer prometheus.Registerer,
 	metricsPrefix string,
 ) (database.Database, error) {
