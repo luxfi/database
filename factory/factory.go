@@ -13,8 +13,8 @@ import (
 	"github.com/luxfi/database/meterdb"
 	"github.com/luxfi/database/pebbledb"
 	"github.com/luxfi/database/versiondb"
+	"github.com/luxfi/log"
 	"github.com/prometheus/client_golang/prometheus"
-	"go.uber.org/zap"
 )
 
 // New creates a new database with the provided configuration
@@ -24,7 +24,7 @@ func New(
 	readOnly bool,
 	config []byte,
 	gatherer interface{}, // Can be prometheus.Gatherer or metrics.MultiGatherer
-	logger *zap.Logger,
+	logger log.Logger,
 	metricsPrefix string,
 	meterDBRegName string,
 ) (database.Database, error) {
