@@ -66,3 +66,5 @@ require (
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+replace google.golang.org/protobuf => google.golang.org/protobuf v1.33.0
