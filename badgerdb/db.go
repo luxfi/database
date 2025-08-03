@@ -4,8 +4,8 @@
 package badgerdb
 
 import (
-	"context"
 	"bytes"
+	"context"
 	"errors"
 	"sync"
 
@@ -35,7 +35,7 @@ func New(file string, configBytes []byte, namespace string, metrics prometheus.R
 	if file == "" {
 		return nil, errors.New("badgerdb: database path required")
 	}
-	
+
 	// Configure BadgerDB options
 	opts := badger.DefaultOptions(file)
 	opts.Logger = nil // TODO: wrap our logger
@@ -57,7 +57,7 @@ func (d *Database) Close() error {
 	if d == nil {
 		return nil
 	}
-	
+
 	d.closeMu.Lock()
 	defer d.closeMu.Unlock()
 
@@ -65,7 +65,7 @@ func (d *Database) Close() error {
 		return database.ErrClosed
 	}
 	d.closed = true
-	
+
 	if d.db == nil {
 		return nil
 	}
@@ -444,17 +444,17 @@ func (b *batch) Size() int {
 
 // iterator wraps a BadgerDB iterator
 type iterator struct {
-	txn      *badger.Txn
-	iter     *badger.Iterator
-	prefix   []byte
-	start    []byte
-	closed   bool
-	err      error
-	mu       sync.RWMutex
-	started  bool // Track if we've started iteration
-	key      []byte
-	value    []byte
-	db       *Database
+	txn     *badger.Txn
+	iter    *badger.Iterator
+	prefix  []byte
+	start   []byte
+	closed  bool
+	err     error
+	mu      sync.RWMutex
+	started bool // Track if we've started iteration
+	key     []byte
+	value   []byte
+	db      *Database
 }
 
 // Next implements the Iterator interface
@@ -475,7 +475,7 @@ func (i *iterator) Next() bool {
 		i.db.closeMu.RLock()
 		dbClosed := i.db.closed
 		i.db.closeMu.RUnlock()
-		
+
 		if dbClosed {
 			i.err = database.ErrClosed
 			i.key = nil
@@ -502,20 +502,20 @@ func (i *iterator) Next() bool {
 	}
 
 	i.iter.Next()
-	
+
 	// Check if we're still valid and within prefix bounds
 	if !i.iter.Valid() {
 		i.key = nil
 		i.value = nil
 		return false
 	}
-	
+
 	if len(i.prefix) > 0 && !bytes.HasPrefix(i.iter.Item().Key(), i.prefix) {
 		i.key = nil
 		i.value = nil
 		return false
 	}
-	
+
 	// Store current key/value
 	i.key = i.getKey()
 	i.value = i.getValue()
@@ -543,7 +543,7 @@ func (i *iterator) getKey() []byte {
 	if i.closed || i.iter == nil || !i.iter.Valid() {
 		return nil
 	}
-	
+
 	key := i.iter.Item().Key()
 	// Check if this is our empty key placeholder
 	if bytes.Equal(key, emptyKeyPlaceholder) {
@@ -594,8 +594,8 @@ type nopIterator struct {
 	err error
 }
 
-func (n *nopIterator) Next() bool       { return false }
-func (n *nopIterator) Error() error     { return n.err }
-func (n *nopIterator) Key() []byte      { return nil }
-func (n *nopIterator) Value() []byte    { return nil }
-func (n *nopIterator) Release()         {}
+func (n *nopIterator) Next() bool    { return false }
+func (n *nopIterator) Error() error  { return n.err }
+func (n *nopIterator) Key() []byte   { return nil }
+func (n *nopIterator) Value() []byte { return nil }
+func (n *nopIterator) Release()      {}

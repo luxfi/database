@@ -142,7 +142,7 @@ func (d *Database) Close() error {
 	if d == nil {
 		return nil
 	}
-	
+
 	d.lock.Lock()
 	defer d.lock.Unlock()
 
