@@ -12,8 +12,8 @@ import (
 
 	"golang.org/x/crypto/chacha20poly1305"
 
-	"github.com/luxfi/database"
 	"github.com/luxfi/crypto/hashing"
+	"github.com/luxfi/database"
 )
 
 var (

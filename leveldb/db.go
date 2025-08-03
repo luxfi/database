@@ -7,8 +7,8 @@
 package leveldb
 
 import (
-	"context"
 	"bytes"
+	"context"
 	"slices"
 	"sync"
 	"sync/atomic"
@@ -73,11 +73,11 @@ func New(path string, blockCacheSize int, writeCacheSize int, handleCap int) (*D
 func (d *Database) Close() error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	
+
 	if d.closed.Load() {
 		return database.ErrClosed
 	}
-	
+
 	d.closed.Store(true)
 	return updateError(d.db.Close())
 }
@@ -168,7 +168,7 @@ func (d *Database) NewIteratorWithStartAndPrefix(start, prefix []byte) database.
 			err:      database.ErrClosed,
 		}
 	}
-	
+
 	var iter iterator.Iterator
 	if len(prefix) == 0 {
 		iter = d.db.NewIterator(nil, nil)
@@ -185,13 +185,13 @@ func (d *Database) NewIteratorWithStartAndPrefix(start, prefix []byte) database.
 		start:    start,
 		db:       d,
 	}
-	
+
 	// If we're already at a valid position after seeking, store the current key/value
 	if iter.Valid() {
 		dbIter.key = slices.Clone(iter.Key())
 		dbIter.value = slices.Clone(iter.Value())
 	}
-	
+
 	return dbIter
 }
 
@@ -292,7 +292,7 @@ func (it *dbIterator) Next() bool {
 		it.value = nil
 		return false
 	}
-	
+
 	// Check if database is closed
 	if it.db != nil && it.db.closed.Load() {
 		it.key = nil
@@ -300,7 +300,7 @@ func (it *dbIterator) Next() bool {
 		it.err = database.ErrClosed
 		return false
 	}
-	
+
 	// If we haven't started iterating yet and we have a start key,
 	// check if we're already at a valid position
 	if it.start != nil && !it.Valid() {

@@ -132,7 +132,7 @@ func FuzzKeyValue(f *testing.F) {
 		engine string
 		tagged bool
 	}
-	
+
 	for _, b := range backends {
 		b := b // capture range variable
 		if b.tagged && !backendEnabled(b.engine) {
@@ -141,7 +141,7 @@ func FuzzKeyValue(f *testing.F) {
 		selectedBackend = &b
 		break
 	}
-	
+
 	if selectedBackend == nil {
 		f.Skip("No available backend for fuzzing")
 	}
@@ -168,7 +168,7 @@ func FuzzNewIteratorWithPrefix(f *testing.F) {
 		engine string
 		tagged bool
 	}
-	
+
 	for _, b := range backends {
 		b := b // capture range variable
 		if b.tagged && !backendEnabled(b.engine) {
@@ -177,7 +177,7 @@ func FuzzNewIteratorWithPrefix(f *testing.F) {
 		selectedBackend = &b
 		break
 	}
-	
+
 	if selectedBackend == nil {
 		f.Skip("No available backend for fuzzing")
 	}
@@ -204,7 +204,7 @@ func FuzzNewIteratorWithStartAndPrefix(f *testing.F) {
 		engine string
 		tagged bool
 	}
-	
+
 	for _, b := range backends {
 		b := b // capture range variable
 		if b.tagged && !backendEnabled(b.engine) {
@@ -213,7 +213,7 @@ func FuzzNewIteratorWithStartAndPrefix(f *testing.F) {
 		selectedBackend = &b
 		break
 	}
-	
+
 	if selectedBackend == nil {
 		f.Skip("No available backend for fuzzing")
 	}
