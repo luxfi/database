@@ -28,13 +28,13 @@ func NewFromConfig(cfg DatabaseConfig) (database.Database, error) {
 	if cfg.Logger == nil {
 		cfg.Logger = log.NewNoOpLogger()
 	}
-	
+
 	// Convert Registerer to interface{} for the factory
 	var gatherer interface{}
 	if cfg.MetricsReg != nil {
 		gatherer = cfg.MetricsReg
 	}
-	
+
 	return New(
 		cfg.Type,
 		cfg.Dir,
