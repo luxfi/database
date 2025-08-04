@@ -1,13 +1,10 @@
 // Copyright (C) 2020-2025, Lux Industries Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 
-//go:build pebbledb
-// +build pebbledb
-
 package manager
 
 import (
-	"github.com/luxfi/database"
+	db "github.com/luxfi/database"
 	"github.com/luxfi/database/pebbledb"
 )
 

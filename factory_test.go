@@ -47,7 +47,7 @@ func TestFactoryDatabases(t *testing.T) {
 	for _, config := range configs {
 		t.Run(config.Type, func(t *testing.T) {
 			// Try to create the database
-			db, err := factory.New(config)
+			db, err := factory.NewFromConfig(config)
 
 			// Check if this is an expected failure due to missing build tags
 			if err != nil {
@@ -71,7 +71,7 @@ func TestFactoryDatabases(t *testing.T) {
 			// Run a subset of the standard tests
 			t.Run("SimpleKeyValue", func(t *testing.T) {
 				// Create a fresh database for this test
-				testDb, err := factory.New(config)
+				testDb, err := factory.NewFromConfig(config)
 				require.NoError(t, err)
 				defer testDb.Close()
 				dbtest.TestSimpleKeyValue(t, testDb)
@@ -79,7 +79,7 @@ func TestFactoryDatabases(t *testing.T) {
 
 			t.Run("BatchPut", func(t *testing.T) {
 				// Create a fresh database for this test
-				testDb, err := factory.New(config)
+				testDb, err := factory.NewFromConfig(config)
 				require.NoError(t, err)
 				defer testDb.Close()
 				dbtest.TestBatchPut(t, testDb)
@@ -87,7 +87,7 @@ func TestFactoryDatabases(t *testing.T) {
 
 			t.Run("Iterator", func(t *testing.T) {
 				// Create a fresh database for this test
-				testDb, err := factory.New(config)
+				testDb, err := factory.NewFromConfig(config)
 				require.NoError(t, err)
 				defer testDb.Close()
 				dbtest.TestIterator(t, testDb)
@@ -113,7 +113,7 @@ func TestPebbleDBWithTag(t *testing.T) {
 				Type: "pebbledb",
 			}
 
-			db, err := factory.New(config)
+			db, err := factory.NewFromConfig(config)
 			if err != nil {
 				t.Skip("PebbleDB not available - compile with -tags=pebbledb")
 				return
@@ -142,7 +142,7 @@ func TestBadgerDBWithTag(t *testing.T) {
 				Type: "badgerdb",
 			}
 
-			db, err := factory.New(config)
+			db, err := factory.NewFromConfig(config)
 			if err != nil {
 				t.Skip("BadgerDB not available - compile with -tags=badgerdb")
 				return

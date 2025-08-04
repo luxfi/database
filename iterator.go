@@ -1,8 +1,8 @@
-// Copyright (C) 2020-2025, Lux Industries Inc. All rights reserved.
+// Copyright (C) 2019-2024, Lux Industries Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 
 // For ease of implementation, our database's interface matches Ethereum's
-// database implementation. This was to allow us to use Geth code as is for the
+// database implementation. This was to allow use to use Geth code as is for the
 // EVM chain.
 
 package database
@@ -28,7 +28,7 @@ type Iterator interface {
 
 	// Error returns any accumulated error. Exhausting all the key/value pairs
 	// is not considered to be an error.
-	// Error should be called after all key/value pairs have been exhausted i.e.
+	// Error should be called after all key/value pairs have been exhausted ie.
 	// after Next() has returned false.
 	Error() error
 
@@ -43,7 +43,7 @@ type Iterator interface {
 	Value() []byte
 
 	// Release releases associated resources. Release should always succeed and
-	// can be called multiple times without causing an error.
+	// can be called multiple times without causing error.
 	Release()
 }
 
