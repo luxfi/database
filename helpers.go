@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2025, Lux Industries Inc. All rights reserved.
+// Copyright (C) 2019-2024, Lux Industries Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 
 package database
@@ -28,6 +28,22 @@ var (
 
 	errWrongSize = errors.New("value has unexpected size")
 )
+
+func PutID(db KeyValueWriter, key []byte, val ids.ID) error {
+	return db.Put(key, val[:])
+}
+
+func GetID(db KeyValueReader, key []byte) (ids.ID, error) {
+	b, err := db.Get(key)
+	if err != nil {
+		return ids.Empty, err
+	}
+	return ids.ToID(b)
+}
+
+func ParseID(b []byte) (ids.ID, error) {
+	return ids.ToID(b)
+}
 
 func PutUInt64(db KeyValueWriter, key []byte, val uint64) error {
 	b := PackUInt64(val)
@@ -125,21 +141,6 @@ func GetBool(db KeyValueReader, key []byte) (bool, error) {
 	return b[0] == BoolTrue, nil
 }
 
-// WithDefault returns the value at [key] in [db]. If the key doesn't exist, it
-// returns [def].
-func WithDefault[V any](
-	get func(KeyValueReader, []byte) (V, error),
-	db KeyValueReader,
-	key []byte,
-	def V,
-) (V, error) {
-	v, err := get(db, key)
-	if err == ErrNotFound {
-		return def, nil
-	}
-	return v, err
-}
-
 func Count(db Iteratee) (int, error) {
 	iterator := db.NewIterator()
 	defer iterator.Release()
@@ -160,6 +161,13 @@ func Size(db Iteratee) (int, error) {
 		size += len(iterator.Key()) + len(iterator.Value()) + kvPairOverhead
 	}
 	return size, iterator.Error()
+}
+
+func IsEmpty(db Iteratee) (bool, error) {
+	iterator := db.NewIterator()
+	defer iterator.Release()
+
+	return !iterator.Next(), iterator.Error()
 }
 
 func AtomicClear(readerDB Iteratee, deleterDB KeyValueDeleter) error {
@@ -226,18 +234,4 @@ func ClearPrefix(db Database, prefix []byte, writeSize int) error {
 		return err
 	}
 	return it.Error()
-}
-
-// PutID stores an ID at the given key
-func PutID(db KeyValueWriter, key []byte, id ids.ID) error {
-	return db.Put(key, id[:])
-}
-
-// GetID retrieves an ID from the given key
-func GetID(db KeyValueReader, key []byte) (ids.ID, error) {
-	idBytes, err := db.Get(key)
-	if err != nil {
-		return ids.Empty, err
-	}
-	return ids.ToID(idBytes)
 }

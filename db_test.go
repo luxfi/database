@@ -41,7 +41,7 @@ func TestAllBackends(t *testing.T) {
 				testName, testFunc := testName, testFunc // capture
 				t.Run(testName, func(t *testing.T) {
 					dir := t.TempDir()
-					dbi, err := factory.New(factory.DatabaseConfig{
+					dbi, err := factory.NewFromConfig(factory.DatabaseConfig{
 						Type:       b.engine,
 						Dir:        filepath.Join(dir, b.name),
 						Name:       b.name,
@@ -63,7 +63,7 @@ func TestAllBackends(t *testing.T) {
 // backendEnabled checks if a backend is available
 func backendEnabled(engine string) bool {
 	// Try to create a dummy database to check if backend is available
-	dbi, err := factory.New(factory.DatabaseConfig{
+	dbi, err := factory.NewFromConfig(factory.DatabaseConfig{
 		Type: engine,
 		Dir:  "",
 	})
@@ -91,7 +91,7 @@ func TestBenchmarks(t *testing.T) {
 
 		t.Run(b.name, func(t *testing.T) {
 			dir := t.TempDir()
-			dbi, err := factory.New(factory.DatabaseConfig{
+			dbi, err := factory.NewFromConfig(factory.DatabaseConfig{
 				Type: b.engine,
 				Dir:  filepath.Join(dir, b.name),
 				Name: b.name,
@@ -147,7 +147,7 @@ func FuzzKeyValue(f *testing.F) {
 	}
 
 	dir := f.TempDir()
-	dbi, err := factory.New(factory.DatabaseConfig{
+	dbi, err := factory.NewFromConfig(factory.DatabaseConfig{
 		Type: selectedBackend.engine,
 		Dir:  filepath.Join(dir, selectedBackend.name),
 		Name: selectedBackend.name,
@@ -183,7 +183,7 @@ func FuzzNewIteratorWithPrefix(f *testing.F) {
 	}
 
 	dir := f.TempDir()
-	dbi, err := factory.New(factory.DatabaseConfig{
+	dbi, err := factory.NewFromConfig(factory.DatabaseConfig{
 		Type: selectedBackend.engine,
 		Dir:  filepath.Join(dir, selectedBackend.name),
 		Name: selectedBackend.name,
@@ -219,7 +219,7 @@ func FuzzNewIteratorWithStartAndPrefix(f *testing.F) {
 	}
 
 	dir := f.TempDir()
-	dbi, err := factory.New(factory.DatabaseConfig{
+	dbi, err := factory.NewFromConfig(factory.DatabaseConfig{
 		Type: selectedBackend.engine,
 		Dir:  filepath.Join(dir, selectedBackend.name),
 		Name: selectedBackend.name,

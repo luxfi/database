@@ -1,4 +1,4 @@
-// Copyright (C) 2020-2025, Lux Industries Inc. All rights reserved.
+// Copyright (C) 2019-2024, Lux Industries Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 
 package database
@@ -14,15 +14,16 @@ var (
 	ErrNotFound = errors.New("not found")
 )
 
-// ErrBackendDisabled is returned when a database backend is not compiled in
+// ErrBackendDisabled is returned when a database backend is disabled at compile time
 type ErrBackendDisabled struct {
 	Backend string
 }
 
 func (e *ErrBackendDisabled) Error() string {
-	return fmt.Sprintf("%s support not compiled in. Build with -tags %s", e.Backend, e.Backend)
+	return fmt.Sprintf("database backend %q disabled", e.Backend)
 }
 
+// NewErrBackendDisabled creates a new ErrBackendDisabled error
 func NewErrBackendDisabled(backend string) error {
 	return &ErrBackendDisabled{Backend: backend}
 }

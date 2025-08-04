@@ -4,6 +4,7 @@
 package corruptabledb
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -13,15 +14,15 @@ import (
 	"github.com/luxfi/database"
 	"github.com/luxfi/database/databasemock"
 	"github.com/luxfi/database/dbtest"
-	"github.com/luxfi/database/logging"
 	"github.com/luxfi/database/memdb"
+	"github.com/luxfi/log"
 )
 
 var errTest = errors.New("non-nil error")
 
 func newDB() *Database {
 	baseDB := memdb.New()
-	return New(baseDB, logging.NoLogger)
+	return New(baseDB, log.NewNoOpLogger())
 }
 
 func TestInterface(t *testing.T) {
@@ -72,7 +73,7 @@ func TestCorruption(t *testing.T) {
 			return corruptableBatch.Write()
 		},
 		"corrupted healthcheck": func(db database.Database) error {
-			err := db.HealthCheck()
+			_, err := db.HealthCheck(context.Background())
 			return err
 		},
 	}
