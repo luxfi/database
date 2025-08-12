@@ -105,27 +105,27 @@ func newMetrics(reg metrics.Metrics) (leveldbMetrics, error) {
 		levelTableCount: reg.NewGaugeVec(
 			"level_table_count",
 			"number of tables in a level",
-			levelLabels...,
+			levelLabels,
 		),
 		levelSize: reg.NewGaugeVec(
 			"level_size",
 			"amount of bytes in a level",
-			levelLabels...,
+			levelLabels,
 		),
 		levelDuration: reg.NewGaugeVec(
 			"level_duration",
 			"amount of time spent compacting a level",
-			levelLabels...,
+			levelLabels,
 		),
 		levelReads: reg.NewCounterVec(
 			"level_reads",
 			"amount of bytes read while compacting a level",
-			levelLabels...,
+			levelLabels,
 		),
 		levelWrites: reg.NewCounterVec(
 			"level_writes",
 			"amount of bytes written while compacting a level",
-			levelLabels...,
+			levelLabels,
 		),
 
 		memCompactions: reg.NewCounter(
