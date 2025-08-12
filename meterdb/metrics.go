@@ -6,6 +6,8 @@ package meterdb
 import (
 	"fmt"
 
+	"github.com/prometheus/client_golang/prometheus"
+	
 	"github.com/luxfi/metrics"
 	"github.com/luxfi/node/utils/metric"
 	"github.com/luxfi/node/utils/wrappers"
@@ -15,7 +17,7 @@ func newSizeMetric(namespace, name string, reg metrics.Metrics, errs *wrappers.E
 	return metric.NewAveragerWithErrs(
 		fmt.Sprintf("%s_%s_size", namespace, name),
 		fmt.Sprintf("bytes passed in a %s call", name),
-		reg,
+		reg.PrometheusRegistry().(prometheus.Registerer),
 		errs,
 	)
 }
@@ -24,7 +26,7 @@ func newTimeMetric(namespace, name string, reg metrics.Metrics, errs *wrappers.E
 	return metric.NewAveragerWithErrs(
 		fmt.Sprintf("%s_%s", namespace, name),
 		fmt.Sprintf("time (in ns) of a %s", name),
-		reg,
+		reg.PrometheusRegistry().(prometheus.Registerer),
 		errs,
 	)
 }
