@@ -5,7 +5,6 @@ package meterdb
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"github.com/luxfi/database"
@@ -105,17 +104,17 @@ func New(
 		calls: reg.NewCounterVec(
 			"calls",
 			"number of calls to the database",
-			methodLabels...,
+			methodLabels,
 		),
 		duration: reg.NewGaugeVec(
 			"duration",
 			"time spent in database calls (ns)",
-			methodLabels...,
+			methodLabels,
 		),
 		size: reg.NewCounterVec(
 			"size",
 			"size of data passed in database calls",
-			methodLabels...,
+			methodLabels,
 		),
 	}
 	return meterDB, nil
