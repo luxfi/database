@@ -6,13 +6,12 @@ package meterdb
 import (
 	"fmt"
 
-	"github.com/prometheus/client_golang/prometheus"
-
+	"github.com/luxfi/metrics"
 	"github.com/luxfi/node/utils/metric"
 	"github.com/luxfi/node/utils/wrappers"
 )
 
-func newSizeMetric(namespace, name string, reg prometheus.Registerer, errs *wrappers.Errs) metric.Averager {
+func newSizeMetric(namespace, name string, reg metrics.Metrics, errs *wrappers.Errs) metric.Averager {
 	return metric.NewAveragerWithErrs(
 		fmt.Sprintf("%s_%s_size", namespace, name),
 		fmt.Sprintf("bytes passed in a %s call", name),
@@ -21,7 +20,7 @@ func newSizeMetric(namespace, name string, reg prometheus.Registerer, errs *wrap
 	)
 }
 
-func newTimeMetric(namespace, name string, reg prometheus.Registerer, errs *wrappers.Errs) metric.Averager {
+func newTimeMetric(namespace, name string, reg metrics.Metrics, errs *wrappers.Errs) metric.Averager {
 	return metric.NewAveragerWithErrs(
 		fmt.Sprintf("%s_%s", namespace, name),
 		fmt.Sprintf("time (in ns) of a %s", name),
@@ -30,7 +29,7 @@ func newTimeMetric(namespace, name string, reg prometheus.Registerer, errs *wrap
 	)
 }
 
-type metrics struct {
+type dbMetrics struct {
 	readSize,
 	writeSize,
 	has, hasSize,
@@ -56,9 +55,9 @@ type metrics struct {
 	iRelease metric.Averager
 }
 
-func newMetrics(namespace string, reg prometheus.Registerer) (metrics, error) {
+func newMetrics(namespace string, reg metrics.Metrics) (dbMetrics, error) {
 	errs := wrappers.Errs{}
-	return metrics{
+	return dbMetrics{
 		readSize:    newSizeMetric(namespace, "read", reg, &errs),
 		writeSize:   newSizeMetric(namespace, "write", reg, &errs),
 		has:         newTimeMetric(namespace, "has", reg, &errs),

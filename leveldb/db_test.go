@@ -14,13 +14,14 @@ import (
 
 	"github.com/luxfi/database"
 	"github.com/luxfi/log"
+	"github.com/luxfi/metrics"
 )
 
 func TestInterface(t *testing.T) {
 	for name, test := range database.Tests {
 		t.Run(name, func(t *testing.T) {
 			folder := t.TempDir()
-			db, err := New(folder, nil, log.NewNoOpLogger(), prometheus.NewRegistry())
+			db, err := New(folder, nil, log.NewNoOpLogger(), metrics.NewRegistry())
 			require.NoError(t, err)
 
 			test(t, db)
@@ -32,7 +33,7 @@ func TestInterface(t *testing.T) {
 
 func newDB(t testing.TB) database.Database {
 	folder := t.TempDir()
-	db, err := New(folder, nil, log.NewNoOpLogger(), prometheus.NewRegistry())
+	db, err := New(folder, nil, log.NewNoOpLogger(), metrics.NewRegistry())
 	require.NoError(t, err)
 	return db
 }
