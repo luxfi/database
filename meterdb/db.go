@@ -8,9 +8,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
-
 	"github.com/luxfi/database"
+	"github.com/luxfi/metrics"
 )
 
 const methodLabel = "method"
@@ -21,67 +20,67 @@ var (
 	_ database.Iterator = (*iterator)(nil)
 
 	methodLabels = []string{methodLabel}
-	hasLabel     = prometheus.Labels{
+	hasLabel     = metrics.Labels{
 		methodLabel: "has",
 	}
-	getLabel = prometheus.Labels{
+	getLabel = metrics.Labels{
 		methodLabel: "get",
 	}
-	putLabel = prometheus.Labels{
+	putLabel = metrics.Labels{
 		methodLabel: "put",
 	}
-	deleteLabel = prometheus.Labels{
+	deleteLabel = metrics.Labels{
 		methodLabel: "delete",
 	}
-	newBatchLabel = prometheus.Labels{
+	newBatchLabel = metrics.Labels{
 		methodLabel: "new_batch",
 	}
-	newIteratorLabel = prometheus.Labels{
+	newIteratorLabel = metrics.Labels{
 		methodLabel: "new_iterator",
 	}
-	compactLabel = prometheus.Labels{
+	compactLabel = metrics.Labels{
 		methodLabel: "compact",
 	}
-	closeLabel = prometheus.Labels{
+	closeLabel = metrics.Labels{
 		methodLabel: "close",
 	}
-	healthCheckLabel = prometheus.Labels{
+	healthCheckLabel = metrics.Labels{
 		methodLabel: "health_check",
 	}
-	batchPutLabel = prometheus.Labels{
+	batchPutLabel = metrics.Labels{
 		methodLabel: "batch_put",
 	}
-	batchDeleteLabel = prometheus.Labels{
+	batchDeleteLabel = metrics.Labels{
 		methodLabel: "batch_delete",
 	}
-	batchSizeLabel = prometheus.Labels{
+	batchSizeLabel = metrics.Labels{
 		methodLabel: "batch_size",
 	}
-	batchWriteLabel = prometheus.Labels{
+	batchWriteLabel = metrics.Labels{
 		methodLabel: "batch_write",
 	}
-	batchResetLabel = prometheus.Labels{
+	batchResetLabel = metrics.Labels{
 		methodLabel: "batch_reset",
 	}
-	batchReplayLabel = prometheus.Labels{
+	batchReplayLabel = metrics.Labels{
 		methodLabel: "batch_replay",
 	}
-	batchInnerLabel = prometheus.Labels{
+	batchInnerLabel = metrics.Labels{
 		methodLabel: "batch_inner",
 	}
-	iteratorNextLabel = prometheus.Labels{
+	iteratorNextLabel = metrics.Labels{
 		methodLabel: "iterator_next",
 	}
-	iteratorErrorLabel = prometheus.Labels{
+	iteratorErrorLabel = metrics.Labels{
 		methodLabel: "iterator_error",
 	}
-	iteratorKeyLabel = prometheus.Labels{
+	iteratorKeyLabel = metrics.Labels{
 		methodLabel: "iterator_key",
 	}
-	iteratorValueLabel = prometheus.Labels{
+	iteratorValueLabel = metrics.Labels{
 		methodLabel: "iterator_value",
 	}
-	iteratorReleaseLabel = prometheus.Labels{
+	iteratorReleaseLabel = metrics.Labels{
 		methodLabel: "iterator_release",
 	}
 )
@@ -91,45 +90,35 @@ var (
 type Database struct {
 	db database.Database
 
-	calls    *prometheus.CounterVec
-	duration *prometheus.GaugeVec
-	size     *prometheus.CounterVec
+	calls    metrics.CounterVec
+	duration metrics.GaugeVec
+	size     metrics.CounterVec
 }
 
 // New returns a new database with added metrics
 func New(
-	reg prometheus.Registerer,
+	reg metrics.Metrics,
 	db database.Database,
 ) (*Database, error) {
 	meterDB := &Database{
 		db: db,
-		calls: prometheus.NewCounterVec(
-			prometheus.CounterOpts{
-				Name: "calls",
-				Help: "number of calls to the database",
-			},
-			methodLabels,
+		calls: reg.NewCounterVec(
+			"calls",
+			"number of calls to the database",
+			methodLabels...,
 		),
-		duration: prometheus.NewGaugeVec(
-			prometheus.GaugeOpts{
-				Name: "duration",
-				Help: "time spent in database calls (ns)",
-			},
-			methodLabels,
+		duration: reg.NewGaugeVec(
+			"duration",
+			"time spent in database calls (ns)",
+			methodLabels...,
 		),
-		size: prometheus.NewCounterVec(
-			prometheus.CounterOpts{
-				Name: "size",
-				Help: "size of data passed in database calls",
-			},
-			methodLabels,
+		size: reg.NewCounterVec(
+			"size",
+			"size of data passed in database calls",
+			methodLabels...,
 		),
 	}
-	return meterDB, errors.Join(
-		reg.Register(meterDB.calls),
-		reg.Register(meterDB.duration),
-		reg.Register(meterDB.size),
-	)
+	return meterDB, nil
 }
 
 func (db *Database) Has(key []byte) (bool, error) {

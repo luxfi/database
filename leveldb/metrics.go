@@ -4,187 +4,154 @@
 package leveldb
 
 import (
-	"errors"
-
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/syndtr/goleveldb/leveldb"
+	
+	"github.com/luxfi/metrics"
 )
 
 var levelLabels = []string{"level"}
 
-type metrics struct {
+type leveldbMetrics struct {
 	// total number of writes that have been delayed due to compaction
-	writesDelayedCount prometheus.Counter
+	writesDelayedCount metrics.Counter
 	// total amount of time (in ns) that writes that have been delayed due to
 	// compaction
-	writesDelayedDuration prometheus.Gauge
+	writesDelayedDuration metrics.Gauge
 	// set to 1 if there is currently at least one write that is being delayed
 	// due to compaction
-	writeIsDelayed prometheus.Gauge
+	writeIsDelayed metrics.Gauge
 
 	// number of currently alive snapshots
-	aliveSnapshots prometheus.Gauge
+	aliveSnapshots metrics.Gauge
 	// number of currently alive iterators
-	aliveIterators prometheus.Gauge
+	aliveIterators metrics.Gauge
 
 	// total amount of data written
-	ioWrite prometheus.Counter
+	ioWrite metrics.Counter
 	// total amount of data read
-	ioRead prometheus.Counter
+	ioRead metrics.Counter
 
 	// total number of bytes of cached data blocks
-	blockCacheSize prometheus.Gauge
+	blockCacheSize metrics.Gauge
 	// current number of open tables
-	openTables prometheus.Gauge
+	openTables metrics.Gauge
 
 	// number of tables per level
-	levelTableCount *prometheus.GaugeVec
+	levelTableCount metrics.GaugeVec
 	// size of each level
-	levelSize *prometheus.GaugeVec
+	levelSize metrics.GaugeVec
 	// amount of time spent compacting each level
-	levelDuration *prometheus.GaugeVec
+	levelDuration metrics.GaugeVec
 	// amount of bytes read while compacting each level
-	levelReads *prometheus.CounterVec
+	levelReads metrics.CounterVec
 	// amount of bytes written while compacting each level
-	levelWrites *prometheus.CounterVec
+	levelWrites metrics.CounterVec
 
 	// total number memory compactions performed
-	memCompactions prometheus.Counter
+	memCompactions metrics.Counter
 	// total number of level 0 compactions performed
-	level0Compactions prometheus.Counter
+	level0Compactions metrics.Counter
 	// total number of non-level 0 compactions performed
-	nonLevel0Compactions prometheus.Counter
+	nonLevel0Compactions metrics.Counter
 	// total number of seek compactions performed
-	seekCompactions prometheus.Counter
+	seekCompactions metrics.Counter
 
 	priorStats, currentStats *leveldb.DBStats
 }
 
-func newMetrics(reg prometheus.Registerer) (metrics, error) {
-	m := metrics{
-		writesDelayedCount: prometheus.NewCounter(prometheus.CounterOpts{
-			Name: "writes_delayed",
-			Help: "number of cumulative writes that have been delayed due to compaction",
-		}),
-		writesDelayedDuration: prometheus.NewGauge(prometheus.GaugeOpts{
-			Name: "writes_delayed_duration",
-			Help: "amount of time (in ns) that writes have been delayed due to compaction",
-		}),
-		writeIsDelayed: prometheus.NewGauge(prometheus.GaugeOpts{
-			Name: "write_delayed",
-			Help: "1 if there is currently a write that is being delayed due to compaction",
-		}),
-
-		aliveSnapshots: prometheus.NewGauge(prometheus.GaugeOpts{
-			Name: "alive_snapshots",
-			Help: "number of currently alive snapshots",
-		}),
-		aliveIterators: prometheus.NewGauge(prometheus.GaugeOpts{
-			Name: "alive_iterators",
-			Help: "number of currently alive iterators",
-		}),
-
-		ioWrite: prometheus.NewCounter(prometheus.CounterOpts{
-			Name: "io_write",
-			Help: "cumulative amount of io write during compaction",
-		}),
-		ioRead: prometheus.NewCounter(prometheus.CounterOpts{
-			Name: "io_read",
-			Help: "cumulative amount of io read during compaction",
-		}),
-
-		blockCacheSize: prometheus.NewGauge(prometheus.GaugeOpts{
-			Name: "block_cache_size",
-			Help: "total size of cached blocks",
-		}),
-		openTables: prometheus.NewGauge(prometheus.GaugeOpts{
-			Name: "open_tables",
-			Help: "number of currently opened tables",
-		}),
-
-		levelTableCount: prometheus.NewGaugeVec(
-			prometheus.GaugeOpts{
-				Name: "table_count",
-				Help: "number of tables allocated by level",
-			},
-			levelLabels,
+func newMetrics(reg metrics.Metrics) (leveldbMetrics, error) {
+	// Convert to using luxfi metrics instead of prometheus directly
+	m := leveldbMetrics{
+		writesDelayedCount: reg.NewCounter(
+			"writes_delayed",
+			"number of cumulative writes that have been delayed due to compaction",
 		),
-		levelSize: prometheus.NewGaugeVec(
-			prometheus.GaugeOpts{
-				Name: "size",
-				Help: "amount of bytes allocated by level",
-			},
-			levelLabels,
+		writesDelayedDuration: reg.NewGauge(
+			"writes_delayed_duration",
+			"amount of time (in ns) that writes have been delayed due to compaction",
 		),
-		levelDuration: prometheus.NewGaugeVec(
-			prometheus.GaugeOpts{
-				Name: "duration",
-				Help: "amount of time (in ns) spent in compaction by level",
-			},
-			levelLabels,
-		),
-		levelReads: prometheus.NewCounterVec(
-			prometheus.CounterOpts{
-				Name: "reads",
-				Help: "amount of bytes read during compaction by level",
-			},
-			levelLabels,
-		),
-		levelWrites: prometheus.NewCounterVec(
-			prometheus.CounterOpts{
-				Name: "writes",
-				Help: "amount of bytes written during compaction by level",
-			},
-			levelLabels,
+		writeIsDelayed: reg.NewGauge(
+			"write_delayed",
+			"1 if there is currently a write that is being delayed due to compaction",
 		),
 
-		memCompactions: prometheus.NewCounter(prometheus.CounterOpts{
-			Name: "mem_comps",
-			Help: "total number of memory compactions performed",
-		}),
-		level0Compactions: prometheus.NewCounter(prometheus.CounterOpts{
-			Name: "level_0_comps",
-			Help: "total number of level 0 compactions performed",
-		}),
-		nonLevel0Compactions: prometheus.NewCounter(prometheus.CounterOpts{
-			Name: "non_level_0_comps",
-			Help: "total number of non-level 0 compactions performed",
-		}),
-		seekCompactions: prometheus.NewCounter(prometheus.CounterOpts{
-			Name: "seek_comps",
-			Help: "total number of seek compactions performed",
-		}),
+		aliveSnapshots: reg.NewGauge(
+			"alive_snapshots",
+			"number of currently alive snapshots",
+		),
+		aliveIterators: reg.NewGauge(
+			"alive_iterators",
+			"number of currently alive iterators",
+		),
+
+		ioWrite: reg.NewCounter(
+			"io_write",
+			"amount of data written",
+		),
+		ioRead: reg.NewCounter(
+			"io_read",
+			"amount of data read",
+		),
+
+		blockCacheSize: reg.NewGauge(
+			"block_cache_size",
+			"total amount of cached data blocks",
+		),
+		openTables: reg.NewGauge(
+			"open_tables",
+			"number of currently open tables",
+		),
+
+		levelTableCount: reg.NewGaugeVec(
+			"level_table_count",
+			"number of tables in a level",
+			levelLabels...,
+		),
+		levelSize: reg.NewGaugeVec(
+			"level_size",
+			"amount of bytes in a level",
+			levelLabels...,
+		),
+		levelDuration: reg.NewGaugeVec(
+			"level_duration",
+			"amount of time spent compacting a level",
+			levelLabels...,
+		),
+		levelReads: reg.NewCounterVec(
+			"level_reads",
+			"amount of bytes read while compacting a level",
+			levelLabels...,
+		),
+		levelWrites: reg.NewCounterVec(
+			"level_writes",
+			"amount of bytes written while compacting a level",
+			levelLabels...,
+		),
+
+		memCompactions: reg.NewCounter(
+			"mem_compactions",
+			"cumulative number of memory compactions performed",
+		),
+		level0Compactions: reg.NewCounter(
+			"level0_compactions",
+			"cumulative number of level 0 compactions performed",
+		),
+		nonLevel0Compactions: reg.NewCounter(
+			"non_level0_compactions",
+			"cumulative number of non-level 0 compactions performed",
+		),
+		seekCompactions: reg.NewCounter(
+			"seek_compactions",
+			"cumulative number of seek compactions performed",
+		),
 
 		priorStats:   &leveldb.DBStats{},
 		currentStats: &leveldb.DBStats{},
 	}
 
-	err := errors.Join(
-		reg.Register(m.writesDelayedCount),
-		reg.Register(m.writesDelayedDuration),
-		reg.Register(m.writeIsDelayed),
-
-		reg.Register(m.aliveSnapshots),
-		reg.Register(m.aliveIterators),
-
-		reg.Register(m.ioWrite),
-		reg.Register(m.ioRead),
-
-		reg.Register(m.blockCacheSize),
-		reg.Register(m.openTables),
-
-		reg.Register(m.levelTableCount),
-		reg.Register(m.levelSize),
-		reg.Register(m.levelDuration),
-		reg.Register(m.levelReads),
-		reg.Register(m.levelWrites),
-
-		reg.Register(m.memCompactions),
-		reg.Register(m.level0Compactions),
-		reg.Register(m.nonLevel0Compactions),
-		reg.Register(m.seekCompactions),
-	)
-	return m, err
+	// Metrics are already registered when created through the Metrics interface
+	// No need to explicitly register them
+	return m, nil
 }
 
 func (db *Database) updateMetrics() error {

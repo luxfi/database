@@ -14,11 +14,12 @@ import (
 
 	"github.com/luxfi/database"
 	"github.com/luxfi/log"
+	"github.com/luxfi/metrics"
 )
 
 func newDB(t testing.TB) *Database {
 	folder := t.TempDir()
-	db, err := New(folder, nil, log.NewNoOpLogger(), prometheus.NewRegistry())
+	db, err := New(folder, nil, log.NewNoOpLogger(), metrics.NewRegistry())
 	require.NoError(t, err)
 	return db.(*Database)
 }
