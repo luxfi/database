@@ -14,7 +14,7 @@ import (
 	"github.com/luxfi/database/pebbledb"
 	"github.com/luxfi/database/versiondb"
 	"github.com/luxfi/log"
-	"github.com/luxfi/metrics"
+	"github.com/luxfi/metric"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -24,7 +24,7 @@ func New(
 	dbPath string,
 	readOnly bool,
 	config []byte,
-	gatherer interface{}, // Can be prometheus.Gatherer or metrics.MultiGatherer
+	gatherer interface{}, // Can be prometheus.Gatherer or metric.MultiGatherer
 	logger log.Logger,
 	metricsPrefix string,
 	meterDBRegName string,
@@ -32,12 +32,12 @@ func New(
 	var db database.Database
 	var err error
 
-	// Try to create a metrics.Metrics from the gatherer
-	var metricsInstance metrics.Metrics
+	// Try to create a metric.Metrics from the gatherer
+	var metricsInstance metric.Metrics
 	var registerer prometheus.Registerer
 	
-	// Check if it's already metrics.Metrics
-	if m, ok := gatherer.(metrics.Metrics); ok {
+	// Check if it's already metric.Metrics
+	if m, ok := gatherer.(metric.Metrics); ok {
 		metricsInstance = m
 	} else if reg, ok := gatherer.(prometheus.Registerer); ok {
 		// Legacy support for prometheus.Registerer
@@ -88,8 +88,13 @@ func New(
 		}
 		return meterDB, nil
 	} else if registerer != nil {
-		// Create metrics.Metrics from prometheus registerer for backward compatibility
-		metricsInstance = metrics.New(metricsPrefix)
+		// Create metric.Metrics from prometheus registerer for backward compatibility
+		if reg, ok := registerer.(*prometheus.Registry); ok {
+			metricsInstance = metric.NewPrometheusMetrics(metricsPrefix, reg)
+		} else {
+			// Create new registry if it's not a *prometheus.Registry
+			metricsInstance = metric.New(metricsPrefix)
+		}
 		meterDB, err := meterdb.New(metricsInstance, db)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create meterdb: %w", err)

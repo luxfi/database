@@ -6,23 +6,23 @@ require (
 	github.com/cockroachdb/pebble v1.1.5
 	github.com/dgraph-io/badger/v4 v4.8.0
 	github.com/luxfi/crypto v1.2.9
-	github.com/luxfi/geth v1.16.27
+	github.com/luxfi/geth v1.16.34
 	github.com/luxfi/ids v1.0.2
-	github.com/luxfi/log v1.0.6
-	github.com/luxfi/metrics v1.1.1
+	github.com/luxfi/log v1.1.1
+	github.com/luxfi/metric v1.3.0
 	github.com/luxfi/node v1.13.4-lux
 	github.com/prometheus/client_golang v1.23.0
 	github.com/stretchr/testify v1.10.0
 	github.com/syndtr/goleveldb v1.0.1-0.20220614013038-64ee5596c38a
 	go.uber.org/mock v0.5.2
 	go.uber.org/zap v1.27.0
-	golang.org/x/crypto v0.40.0
-	golang.org/x/exp v0.0.0-20250718183923-645b1fa84792
+	golang.org/x/crypto v0.41.0
+	golang.org/x/exp v0.0.0-20250813145105-42675adae3e6
 	golang.org/x/sync v0.16.0
 )
 
 replace (
-	github.com/luxfi/metrics => ../metrics
+	github.com/luxfi/metric => ../metrics
 	github.com/luxfi/node => ../node
 )
 
@@ -63,9 +63,9 @@ require (
 	go.opentelemetry.io/otel/metric v1.37.0 // indirect
 	go.opentelemetry.io/otel/trace v1.37.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/net v0.42.0 // indirect
+	golang.org/x/net v0.43.0 // indirect
 	golang.org/x/sys v0.35.0 // indirect
-	golang.org/x/text v0.27.0 // indirect
+	golang.org/x/text v0.28.0 // indirect
 	gonum.org/v1/gonum v0.14.0 // indirect
 	google.golang.org/protobuf v1.36.7 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect

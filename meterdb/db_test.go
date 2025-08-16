@@ -14,7 +14,7 @@ import (
 
 	"github.com/luxfi/database"
 	"github.com/luxfi/database/memdb"
-	"github.com/luxfi/metrics"
+	"github.com/luxfi/metric"
 )
 
 func TestInterface(t *testing.T) {

@@ -6,60 +6,60 @@ package leveldb
 import (
 	"github.com/syndtr/goleveldb/leveldb"
 	
-	"github.com/luxfi/metrics"
+	metric "github.com/luxfi/metric"
 )
 
 var levelLabels = []string{"level"}
 
 type leveldbMetrics struct {
 	// total number of writes that have been delayed due to compaction
-	writesDelayedCount metrics.Counter
+	writesDelayedCount metric.Counter
 	// total amount of time (in ns) that writes that have been delayed due to
 	// compaction
-	writesDelayedDuration metrics.Gauge
+	writesDelayedDuration metric.Gauge
 	// set to 1 if there is currently at least one write that is being delayed
 	// due to compaction
-	writeIsDelayed metrics.Gauge
+	writeIsDelayed metric.Gauge
 
 	// number of currently alive snapshots
-	aliveSnapshots metrics.Gauge
+	aliveSnapshots metric.Gauge
 	// number of currently alive iterators
-	aliveIterators metrics.Gauge
+	aliveIterators metric.Gauge
 
 	// total amount of data written
-	ioWrite metrics.Counter
+	ioWrite metric.Counter
 	// total amount of data read
-	ioRead metrics.Counter
+	ioRead metric.Counter
 
 	// total number of bytes of cached data blocks
-	blockCacheSize metrics.Gauge
+	blockCacheSize metric.Gauge
 	// current number of open tables
-	openTables metrics.Gauge
+	openTables metric.Gauge
 
 	// number of tables per level
-	levelTableCount metrics.GaugeVec
+	levelTableCount metric.GaugeVec
 	// size of each level
-	levelSize metrics.GaugeVec
+	levelSize metric.GaugeVec
 	// amount of time spent compacting each level
-	levelDuration metrics.GaugeVec
+	levelDuration metric.GaugeVec
 	// amount of bytes read while compacting each level
-	levelReads metrics.CounterVec
+	levelReads metric.CounterVec
 	// amount of bytes written while compacting each level
-	levelWrites metrics.CounterVec
+	levelWrites metric.CounterVec
 
 	// total number memory compactions performed
-	memCompactions metrics.Counter
+	memCompactions metric.Counter
 	// total number of level 0 compactions performed
-	level0Compactions metrics.Counter
+	level0Compactions metric.Counter
 	// total number of non-level 0 compactions performed
-	nonLevel0Compactions metrics.Counter
+	nonLevel0Compactions metric.Counter
 	// total number of seek compactions performed
-	seekCompactions metrics.Counter
+	seekCompactions metric.Counter
 
 	priorStats, currentStats *leveldb.DBStats
 }
 
-func newMetrics(reg metrics.Metrics) (leveldbMetrics, error) {
+func newMetrics(reg metric.Metrics) (leveldbMetrics, error) {
 	// Convert to using luxfi metrics instead of prometheus directly
 	m := leveldbMetrics{
 		writesDelayedCount: reg.NewCounter(

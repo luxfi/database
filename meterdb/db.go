@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/luxfi/database"
-	"github.com/luxfi/metrics"
+	"github.com/luxfi/metric"
 )
 
 const methodLabel = "method"
@@ -19,67 +19,67 @@ var (
 	_ database.Iterator = (*iterator)(nil)
 
 	methodLabels = []string{methodLabel}
-	hasLabel     = metrics.Labels{
+	hasLabel     = metric.Labels{
 		methodLabel: "has",
 	}
-	getLabel = metrics.Labels{
+	getLabel = metric.Labels{
 		methodLabel: "get",
 	}
-	putLabel = metrics.Labels{
+	putLabel = metric.Labels{
 		methodLabel: "put",
 	}
-	deleteLabel = metrics.Labels{
+	deleteLabel = metric.Labels{
 		methodLabel: "delete",
 	}
-	newBatchLabel = metrics.Labels{
+	newBatchLabel = metric.Labels{
 		methodLabel: "new_batch",
 	}
-	newIteratorLabel = metrics.Labels{
+	newIteratorLabel = metric.Labels{
 		methodLabel: "new_iterator",
 	}
-	compactLabel = metrics.Labels{
+	compactLabel = metric.Labels{
 		methodLabel: "compact",
 	}
-	closeLabel = metrics.Labels{
+	closeLabel = metric.Labels{
 		methodLabel: "close",
 	}
-	healthCheckLabel = metrics.Labels{
+	healthCheckLabel = metric.Labels{
 		methodLabel: "health_check",
 	}
-	batchPutLabel = metrics.Labels{
+	batchPutLabel = metric.Labels{
 		methodLabel: "batch_put",
 	}
-	batchDeleteLabel = metrics.Labels{
+	batchDeleteLabel = metric.Labels{
 		methodLabel: "batch_delete",
 	}
-	batchSizeLabel = metrics.Labels{
+	batchSizeLabel = metric.Labels{
 		methodLabel: "batch_size",
 	}
-	batchWriteLabel = metrics.Labels{
+	batchWriteLabel = metric.Labels{
 		methodLabel: "batch_write",
 	}
-	batchResetLabel = metrics.Labels{
+	batchResetLabel = metric.Labels{
 		methodLabel: "batch_reset",
 	}
-	batchReplayLabel = metrics.Labels{
+	batchReplayLabel = metric.Labels{
 		methodLabel: "batch_replay",
 	}
-	batchInnerLabel = metrics.Labels{
+	batchInnerLabel = metric.Labels{
 		methodLabel: "batch_inner",
 	}
-	iteratorNextLabel = metrics.Labels{
+	iteratorNextLabel = metric.Labels{
 		methodLabel: "iterator_next",
 	}
-	iteratorErrorLabel = metrics.Labels{
+	iteratorErrorLabel = metric.Labels{
 		methodLabel: "iterator_error",
 	}
-	iteratorKeyLabel = metrics.Labels{
+	iteratorKeyLabel = metric.Labels{
 		methodLabel: "iterator_key",
 	}
-	iteratorValueLabel = metrics.Labels{
+	iteratorValueLabel = metric.Labels{
 		methodLabel: "iterator_value",
 	}
-	iteratorReleaseLabel = metrics.Labels{
+	iteratorReleaseLabel = metric.Labels{
 		methodLabel: "iterator_release",
 	}
 )
@@ -89,14 +89,14 @@ var (
 type Database struct {
 	db database.Database
 
-	calls    metrics.CounterVec
-	duration metrics.GaugeVec
-	size     metrics.CounterVec
+	calls    metric.CounterVec
+	duration metric.GaugeVec
+	size     metric.CounterVec
 }
 
 // New returns a new database with added metrics
 func New(
-	reg metrics.Metrics,
+	reg metric.Metrics,
 	db database.Database,
 ) (*Database, error) {
 	meterDB := &Database{

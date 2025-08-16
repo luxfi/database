@@ -12,9 +12,10 @@ import (
 	db "github.com/luxfi/database"
 	"github.com/luxfi/database/leveldb"
 	"github.com/luxfi/database/memdb"
-	"github.com/luxfi/database/metricdb"
+	"github.com/luxfi/database/meterdb"
 	"github.com/luxfi/database/prefixdb"
 	"github.com/luxfi/database/versiondb"
+	"github.com/luxfi/metric"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -122,9 +123,11 @@ func (m *Manager) New(config *Config) (db.Database, error) {
 
 	// Add metrics wrapper if needed
 	if config.EnableMetrics && m.registerer != nil {
-		database, err = metricdb.New(config.Namespace, database, m.registerer)
+		// Create metrics instance using metric package
+		metricsInstance := metric.New(config.Namespace)
+		database, err = meterdb.New(metricsInstance, database)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create metric database: %w", err)
+			return nil, fmt.Errorf("failed to create meter database: %w", err)
 		}
 	}
 
