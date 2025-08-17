@@ -14,7 +14,7 @@ import (
 	"github.com/luxfi/database/pebbledb"
 	"github.com/luxfi/database/versiondb"
 	"github.com/luxfi/log"
-	"github.com/luxfi/metrics"
+	metrics "github.com/luxfi/metric"
 	"github.com/prometheus/client_golang/prometheus"
 )
 

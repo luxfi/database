@@ -6,7 +6,7 @@ package leveldb
 import (
 	"github.com/syndtr/goleveldb/leveldb"
 	
-	"github.com/luxfi/metrics"
+	metrics "github.com/luxfi/metric"
 )
 
 var levelLabels = []string{"level"}

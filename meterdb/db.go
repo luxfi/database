@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/luxfi/database"
-	"github.com/luxfi/metrics"
+	metrics "github.com/luxfi/metric"
 )
 
 const methodLabel = "method"

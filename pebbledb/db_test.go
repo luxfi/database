@@ -14,7 +14,7 @@ import (
 
 	"github.com/luxfi/database"
 	"github.com/luxfi/log"
-	"github.com/luxfi/metrics"
+	metrics "github.com/luxfi/metric"
 )
 
 func newDB(t testing.TB) *Database {

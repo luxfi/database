@@ -6,7 +6,7 @@ package meterdb
 import (
 	"fmt"
 
-	"github.com/luxfi/metrics"
+	metrics "github.com/luxfi/metric"
 	"github.com/luxfi/node/utils/metric"
 	"github.com/luxfi/node/utils/wrappers"
 )
