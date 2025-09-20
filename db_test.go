@@ -33,7 +33,7 @@ func TestAllBackends(t *testing.T) {
 			t.Parallel()
 
 			if b.tagged && !backendEnabled(b.engine) {
-				t.Skipf("%s disabled by build tags", b.engine)
+
 			}
 
 			// Run each test in dbtest.Tests with a fresh database
@@ -78,9 +78,8 @@ func backendEnabled(engine string) bool {
 
 // TestBenchmarks runs the benchmark suite against all backends
 func TestBenchmarks(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping benchmark tests in short mode")
-	}
+	// Run benchmark tests regardless of short mode - they are lightweight tests
+	// that verify benchmark setup without running full benchmarks
 
 	// Note: Benchmarks should be run with go test -bench, not as regular tests
 	// This test just verifies that benchmarks can be set up without errors
