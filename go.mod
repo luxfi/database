@@ -1,15 +1,15 @@
 module github.com/luxfi/database
 
-go 1.24.6
+go 1.25.1
 
 require (
 	github.com/cockroachdb/pebble v1.1.5
 	github.com/dgraph-io/badger/v4 v4.8.0
-	github.com/luxfi/crypto v1.16.16
+	github.com/luxfi/crypto v1.17.0
 	github.com/luxfi/geth v1.16.34
-	github.com/luxfi/ids v1.0.2
+	github.com/luxfi/ids v1.1.0
 	github.com/luxfi/log v1.1.22
-	github.com/luxfi/metric v1.3.0
+	github.com/luxfi/metric v1.4.0
 	github.com/luxfi/node v1.16.15
 	github.com/prometheus/client_golang v1.23.2
 	github.com/stretchr/testify v1.11.1
