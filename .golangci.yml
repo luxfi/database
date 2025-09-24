@@ -81,6 +81,6 @@ issues:
       text: "SA6002|SA9003"
 
 run:
-  go: '1.21'
+  go: '1.22'
   timeout: 5m
   tests: true
