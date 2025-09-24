@@ -43,36 +43,36 @@ func New(file string, configBytes []byte, namespace string, metrics prometheus.R
 	opts.Logger = nil // TODO: wrap our logger
 
 	// Performance optimizations for blockchain + Verkle tree workloads
-	opts.SyncWrites = false // Async writes for better performance
-	opts.NumCompactors = 4 // More compactors for faster background compaction
-	opts.NumLevelZeroTables = 10 // More L0 tables before stalling
+	opts.SyncWrites = false           // Async writes for better performance
+	opts.NumCompactors = 4            // More compactors for faster background compaction
+	opts.NumLevelZeroTables = 10      // More L0 tables before stalling
 	opts.NumLevelZeroTablesStall = 15 // Stall writes if L0 tables exceed this
-	opts.NumMemtables = 5 // More memtables for better write throughput
-	opts.MemTableSize = 64 << 20 // 64 MB memtable size
-	opts.ValueLogFileSize = 1 << 30 // 1 GB value log files
+	opts.NumMemtables = 5             // More memtables for better write throughput
+	opts.MemTableSize = 64 << 20      // 64 MB memtable size
+	opts.ValueLogFileSize = 1 << 30   // 1 GB value log files
 	opts.ValueLogMaxEntries = 1000000 // Max entries per value log file
-	opts.BlockCacheSize = 256 << 20 // 256 MB block cache
-	opts.IndexCacheSize = 100 << 20 // 100 MB index cache
-	opts.BloomFalsePositive = 0.01 // 1% false positive rate for bloom filter
-	opts.BaseTableSize = 64 << 20 // 64 MB base table size
-	opts.BaseLevelSize = 256 << 20 // 256 MB base level size
-	opts.TableSizeMultiplier = 2 // Table size multiplier for each level
-	opts.LevelSizeMultiplier = 10 // Standard LSM tree multiplier
-	opts.MaxLevels = 7 // Standard number of levels
+	opts.BlockCacheSize = 256 << 20   // 256 MB block cache
+	opts.IndexCacheSize = 100 << 20   // 100 MB index cache
+	opts.BloomFalsePositive = 0.01    // 1% false positive rate for bloom filter
+	opts.BaseTableSize = 64 << 20     // 64 MB base table size
+	opts.BaseLevelSize = 256 << 20    // 256 MB base level size
+	opts.TableSizeMultiplier = 2      // Table size multiplier for each level
+	opts.LevelSizeMultiplier = 10     // Standard LSM tree multiplier
+	opts.MaxLevels = 7                // Standard number of levels
 
 	// Verkle-optimized: Store anything > 256 bytes in value log
 	// Verkle keys are ~32 bytes, small values stay in LSM for fast access
 	// Verkle proofs (often > 256 bytes) go to value log
 	opts.ValueThreshold = 256
 
-	opts.NumVersionsToKeep = 1 // Only keep 1 version for blockchain data
+	opts.NumVersionsToKeep = 1   // Only keep 1 version for blockchain data
 	opts.CompactL0OnClose = true // Compact L0 tables on close
 	// Note: KeepBlocksInCache and KeepBlockIndicesInCache are no longer in BadgerDB v4
 	// Cache management is automatic
 	opts.Compression = options.Snappy // Use Snappy compression
-	opts.ZSTDCompressionLevel = 1 // Fast ZSTD compression if used
-	opts.BlockSize = 4 * 1024 // 4KB block size
-	opts.DetectConflicts = false // No conflict detection for single writer
+	opts.ZSTDCompressionLevel = 1     // Fast ZSTD compression if used
+	opts.BlockSize = 4 * 1024         // 4KB block size
+	opts.DetectConflicts = false      // No conflict detection for single writer
 
 	// Note: LoadingMode (MemoryMap) is no longer in BadgerDB v4
 	// Memory management is automatic

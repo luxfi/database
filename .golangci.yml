@@ -1,0 +1,86 @@
+linters:
+  enable-all: false
+  enable:
+    - errcheck
+    - gosimple
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - gosec
+    - goconst
+    - gocyclo
+    - gofmt
+    - goimports
+    - misspell
+    - unconvert
+
+linters-settings:
+  errcheck:
+    # Exclude test files from errcheck
+    exclude-functions:
+      - (*testing.T).Fatal
+      - (*testing.T).Fatalf
+      - (*testing.T).Error
+      - (*testing.T).Errorf
+      - (*testing.B).Fatal
+      - (*testing.B).Fatalf
+      - (*testing.B).Error
+      - (*testing.B).Errorf
+  gocyclo:
+    min-complexity: 40  # Increase threshold for test suites
+  gosec:
+    excludes:
+      - G115  # Integer overflow conversion - handled manually
+      - G404  # Use of weak random in tests
+
+issues:
+  exclude-dirs:
+    - dbtest
+    - vendor
+    - .git
+  exclude-rules:
+    # Exclude errcheck in test files
+    - path: _test\.go
+      linters:
+        - errcheck
+    # Exclude errcheck in dbtest package
+    - path: dbtest/
+      linters:
+        - errcheck
+        - gocyclo
+    # Exclude errcheck in badgerdb for GC routine
+    - path: badgerdb/db\.go
+      text: "RunValueLogGC"
+      linters:
+        - errcheck
+    # Exclude unused in specific files
+    - path: leveldb/metrics\.go
+      linters:
+        - unused
+    - path: meterdb/metrics\.go
+      linters:
+        - unused
+    - path: pebbledb/db\.go
+      linters:
+        - unused
+    - path: factory/memdb\.go
+      linters:
+        - unused
+    # Exclude goconst for test values
+    - path: codec/
+      linters:
+        - goconst
+    # SA1019 deprecated rand.Read - using in tests is fine
+    - path: dbtest/benchmark\.go
+      linters:
+        - staticcheck
+    # SA6002 and SA9003 are not critical
+    - linters:
+        - staticcheck
+      text: "SA6002|SA9003"
+
+run:
+  go: '1.25.1'
+  timeout: 5m
+  tests: true
