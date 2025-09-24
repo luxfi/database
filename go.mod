@@ -2,6 +2,8 @@ module github.com/luxfi/database
 
 go 1.22
 
+toolchain go1.22.0
+
 require (
 	github.com/cockroachdb/pebble v1.1.5
 	github.com/dgraph-io/badger/v4 v4.8.0
