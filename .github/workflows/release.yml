@@ -13,7 +13,9 @@ jobs:
   test:
     name: Test Before Release
     runs-on: ubuntu-latest
-    
+    env:
+      GOTOOLCHAIN: auto
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -38,7 +40,9 @@ jobs:
     name: Create Release
     needs: test
     runs-on: ubuntu-latest
-    
+    env:
+      GOTOOLCHAIN: auto
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
