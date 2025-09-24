@@ -1,8 +1,8 @@
 module github.com/luxfi/database
 
-go 1.22
+go 1.21
 
-toolchain go1.22.0
+toolchain go1.22.9
 
 require (
 	github.com/cockroachdb/pebble v1.1.5
