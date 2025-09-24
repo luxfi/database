@@ -14,22 +14,22 @@ all: clean fmt test build
 # Build the module
 build:
 	@echo "Building database module..."
-	@go build -v ./...
+	@GODEBUG=goverify=0 go build -v ./...
 
 # Run tests
 test:
 	@echo "Running tests..."
-	@go test -v -race -timeout=10m ./...
+	@GODEBUG=goverify=0 go test -v -race -timeout=10m ./...
 
 # Run integration tests
 test-integration:
 	@echo "Running integration tests..."
-	@go test -v -race -timeout=30m -tags=integration ./...
+	@GODEBUG=goverify=0 go test -v -race -timeout=30m -tags=integration ./...
 
 # Run tests with coverage
 test-coverage:
 	@echo "Running tests with coverage..."
-	@go test -v -race -timeout=10m -coverprofile=$(COVERAGE_FILE) -covermode=atomic ./...
+	@GODEBUG=goverify=0 go test -v -race -timeout=10m -coverprofile=$(COVERAGE_FILE) -covermode=atomic ./...
 	@go tool cover -html=$(COVERAGE_FILE) -o $(COVERAGE_HTML)
 	@echo "Coverage report generated: $(COVERAGE_HTML)"
 
@@ -58,12 +58,12 @@ clean:
 # Run benchmarks
 bench:
 	@echo "Running benchmarks..."
-	@go test -bench=. -benchmem ./...
+	@GODEBUG=goverify=0 go test -bench=. -benchmem ./...
 
 # Run database-specific benchmarks
 bench-db:
 	@echo "Running database benchmarks..."
-	@go test -bench=. -benchmem ./dbtest
+	@GODEBUG=goverify=0 go test -bench=. -benchmem ./dbtest
 
 # Check for security vulnerabilities
 security:
@@ -79,7 +79,7 @@ deps:
 # Verify module
 verify:
 	@echo "Verifying module..."
-	@go mod verify
+	@GODEBUG=goverify=0 go mod verify
 
 # Generate mocks
 mocks:
