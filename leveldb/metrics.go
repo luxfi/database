@@ -5,7 +5,7 @@ package leveldb
 
 import (
 	"github.com/syndtr/goleveldb/leveldb"
-	
+
 	metric "github.com/luxfi/metric"
 )
 

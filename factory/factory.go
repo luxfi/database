@@ -35,7 +35,7 @@ func New(
 	// Try to create a metric.Metrics from the gatherer
 	var metricsInstance metric.Metrics
 	var registerer prometheus.Registerer
-	
+
 	// Check if it's already metric.Metrics
 	if m, ok := gatherer.(metric.Metrics); ok {
 		metricsInstance = m

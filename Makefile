@@ -4,7 +4,7 @@
 
 # Variables
 GOBIN := $(shell go env GOPATH)/bin
-GOLANGCI_LINT_VERSION := v1.54.2
+GOLANGCI_LINT_VERSION := v1.62.2
 COVERAGE_FILE := coverage.out
 COVERAGE_HTML := coverage.html
 

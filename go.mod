@@ -21,11 +21,6 @@ require (
 	golang.org/x/sync v0.16.0
 )
 
-replace (
-	github.com/luxfi/metric => ../metrics
-	github.com/luxfi/node => ../node
-)
-
 require (
 	github.com/DataDog/zstd v1.5.7 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
@@ -50,8 +45,7 @@ require (
 	github.com/klauspost/compress v1.18.0 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
-	github.com/luxfi/math v0.1.0 // indirect
-	github.com/luxfi/mock v0.1.0 // indirect
+	github.com/luxfi/metrics v1.1.1 // indirect
 	github.com/mr-tron/base58 v1.2.0 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
