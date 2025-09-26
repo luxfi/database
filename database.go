@@ -12,6 +12,13 @@ import (
 	"io"
 )
 
+const (
+	// MaxExcessCapacityFactor is the factor above which capacity is considered excessive
+	MaxExcessCapacityFactor = 4
+	// CapacityReductionFactor is the factor by which to reduce capacity when it's excessive
+	CapacityReductionFactor = 2
+)
+
 // KeyValueReader wraps the Has and Get method of a backing data store.
 type KeyValueReader interface {
 	// Has retrieves if a key is present in the key-value data store.
