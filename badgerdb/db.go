@@ -6,13 +6,16 @@ package badgerdb
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 
 	badger "github.com/dgraph-io/badger/v4"
 	"github.com/dgraph-io/badger/v4/options"
 	"github.com/luxfi/database"
+	"github.com/luxfi/log"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -40,7 +43,12 @@ func New(file string, configBytes []byte, namespace string, metrics prometheus.R
 
 	// Configure BadgerDB options with optimizations
 	opts := badger.DefaultOptions(file)
-	opts.Logger = nil // TODO: wrap our logger
+	// Wrap our logger for BadgerDB
+	if configBytes != nil {
+		opts.Logger = &badgerLogger{namespace: namespace}
+	} else {
+		opts.Logger = nil // Silent mode by default
+	}
 
 	// Performance optimizations for blockchain + Verkle tree workloads
 	opts.SyncWrites = false           // Async writes for better performance
@@ -79,7 +87,9 @@ func New(file string, configBytes []byte, namespace string, metrics prometheus.R
 
 	// Parse custom config if provided
 	if len(configBytes) > 0 {
-		// TODO: Parse JSON config to override default options
+		if cfg, err := parseConfig(configBytes); err == nil {
+			applyConfig(&opts, cfg)
+		}
 	}
 
 	// Open the database
@@ -326,10 +336,19 @@ func (d *Database) Compact(start []byte, limit []byte) error {
 
 // GetSnapshot implements the database.Database interface
 func (d *Database) GetSnapshot() (database.Database, error) {
-	// BadgerDB doesn't support snapshots in the same way
-	// For now, return the same database instance
-	// TODO: Implement proper snapshot support if needed
-	return d, nil
+	d.closeMu.RLock()
+	defer d.closeMu.RUnlock()
+
+	if d.closed {
+		return nil, database.ErrClosed
+	}
+
+	// Create a new read-only transaction that acts as a snapshot
+	// This provides a consistent view of the database at this point in time
+	return &snapshotDB{
+		db:   d,
+		txn:  d.db.NewTransaction(false),
+	}, nil
 }
 
 // Empty returns true if the database doesn't contain any keys (but not deleted keys)
@@ -654,3 +673,303 @@ func (n *nopIterator) Error() error  { return n.err }
 func (n *nopIterator) Key() []byte   { return nil }
 func (n *nopIterator) Value() []byte { return nil }
 func (n *nopIterator) Release()      {}
+
+// Config represents BadgerDB configuration
+type Config struct {
+	SyncWrites          bool   `json:"syncWrites"`
+	NumCompactors       int    `json:"numCompactors"`
+	NumMemtables        int    `json:"numMemtables"`
+	MemTableSize        int64  `json:"memTableSize"`
+	ValueLogFileSize    int64  `json:"valueLogFileSize"`
+	ValueLogMaxEntries  uint32 `json:"valueLogMaxEntries"`
+	BlockCacheSize      int64  `json:"blockCacheSize"`
+	IndexCacheSize      int64  `json:"indexCacheSize"`
+	BloomFalsePositive  float64 `json:"bloomFalsePositive"`
+	ValueThreshold      int    `json:"valueThreshold"`
+	Compression         string `json:"compression"`
+	ZSTDCompressionLevel int    `json:"zstdCompressionLevel"`
+}
+
+// parseConfig parses JSON configuration for BadgerDB
+func parseConfig(configBytes []byte) (*Config, error) {
+	var cfg Config
+	if err := json.Unmarshal(configBytes, &cfg); err != nil {
+		return nil, fmt.Errorf("failed to parse BadgerDB config: %w", err)
+	}
+	return &cfg, nil
+}
+
+// applyConfig applies parsed configuration to BadgerDB options
+func applyConfig(opts *badger.Options, cfg *Config) {
+	if cfg.SyncWrites {
+		opts.SyncWrites = true
+	}
+	if cfg.NumCompactors > 0 {
+		opts.NumCompactors = cfg.NumCompactors
+	}
+	if cfg.NumMemtables > 0 {
+		opts.NumMemtables = cfg.NumMemtables
+	}
+	if cfg.MemTableSize > 0 {
+		opts.MemTableSize = cfg.MemTableSize
+	}
+	if cfg.ValueLogFileSize > 0 {
+		opts.ValueLogFileSize = cfg.ValueLogFileSize
+	}
+	if cfg.ValueLogMaxEntries > 0 {
+		opts.ValueLogMaxEntries = cfg.ValueLogMaxEntries
+	}
+	if cfg.BlockCacheSize > 0 {
+		opts.BlockCacheSize = cfg.BlockCacheSize
+	}
+	if cfg.IndexCacheSize > 0 {
+		opts.IndexCacheSize = cfg.IndexCacheSize
+	}
+	if cfg.BloomFalsePositive > 0 {
+		opts.BloomFalsePositive = cfg.BloomFalsePositive
+	}
+	if cfg.ValueThreshold > 0 {
+		opts.ValueThreshold = int64(cfg.ValueThreshold)
+	}
+	if cfg.Compression != "" {
+		switch cfg.Compression {
+		case "snappy":
+			opts.Compression = options.Snappy
+		case "zstd":
+			opts.Compression = options.ZSTD
+		case "none":
+			opts.Compression = options.None
+		}
+	}
+	if cfg.ZSTDCompressionLevel > 0 {
+		opts.ZSTDCompressionLevel = cfg.ZSTDCompressionLevel
+	}
+}
+
+// badgerLogger wraps our logger for BadgerDB
+type badgerLogger struct {
+	namespace string
+}
+
+// Errorf logs an error message
+func (l *badgerLogger) Errorf(format string, args ...interface{}) {
+	// Log to stderr for now
+	log.Error(fmt.Sprintf("[%s] %s", l.namespace, fmt.Sprintf(format, args...)))
+}
+
+// Warningf logs a warning message
+func (l *badgerLogger) Warningf(format string, args ...interface{}) {
+	log.Warn(fmt.Sprintf("[%s] %s", l.namespace, fmt.Sprintf(format, args...)))
+}
+
+// Infof logs an info message
+func (l *badgerLogger) Infof(format string, args ...interface{}) {
+	log.Info(fmt.Sprintf("[%s] %s", l.namespace, fmt.Sprintf(format, args...)))
+}
+
+// Debugf logs a debug message
+func (l *badgerLogger) Debugf(format string, args ...interface{}) {
+	log.Debug(fmt.Sprintf("[%s] %s", l.namespace, fmt.Sprintf(format, args...)))
+}
+
+// snapshotDB represents a snapshot of the database at a point in time
+type snapshotDB struct {
+	db     *Database
+	txn    *badger.Txn
+	closed bool
+	mu     sync.RWMutex
+}
+
+// Has implements the Database interface for snapshot
+func (s *snapshotDB) Has(key []byte) (bool, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	if s.closed {
+		return false, database.ErrClosed
+	}
+
+	if len(key) == 0 {
+		key = emptyKeyPlaceholder
+	}
+
+	_, err := s.txn.Get(key)
+	if err == badger.ErrKeyNotFound {
+		return false, nil
+	}
+	return err == nil, err
+}
+
+// Get implements the Database interface for snapshot
+func (s *snapshotDB) Get(key []byte) ([]byte, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	if s.closed {
+		return nil, database.ErrClosed
+	}
+
+	if len(key) == 0 {
+		key = emptyKeyPlaceholder
+	}
+
+	item, err := s.txn.Get(key)
+	if err == badger.ErrKeyNotFound {
+		return nil, database.ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return item.ValueCopy(nil)
+}
+
+// Put is not supported for snapshots
+func (s *snapshotDB) Put(key []byte, value []byte) error {
+	return errors.New("cannot modify snapshot")
+}
+
+// Delete is not supported for snapshots
+func (s *snapshotDB) Delete(key []byte) error {
+	return errors.New("cannot modify snapshot")
+}
+
+// NewBatch is not supported for snapshots
+func (s *snapshotDB) NewBatch() database.Batch {
+	return &nopBatch{err: errors.New("cannot create batch on snapshot")}
+}
+
+// NewIterator creates an iterator for the snapshot
+func (s *snapshotDB) NewIterator() database.Iterator {
+	return s.NewIteratorWithStartAndPrefix(nil, nil)
+}
+
+// NewIteratorWithStart creates an iterator for the snapshot
+func (s *snapshotDB) NewIteratorWithStart(start []byte) database.Iterator {
+	return s.NewIteratorWithStartAndPrefix(start, nil)
+}
+
+// NewIteratorWithPrefix creates an iterator for the snapshot
+func (s *snapshotDB) NewIteratorWithPrefix(prefix []byte) database.Iterator {
+	return s.NewIteratorWithStartAndPrefix(nil, prefix)
+}
+
+// NewIteratorWithStartAndPrefix creates an iterator for the snapshot
+func (s *snapshotDB) NewIteratorWithStartAndPrefix(start []byte, prefix []byte) database.Iterator {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	if s.closed {
+		return &nopIterator{err: database.ErrClosed}
+	}
+
+	opts := badger.DefaultIteratorOptions
+	if len(prefix) > 0 {
+		opts.Prefix = prefix
+	}
+
+	it := s.txn.NewIterator(opts)
+	iter := &iterator{
+		txn:    s.txn,
+		iter:   it,
+		prefix: prefix,
+		start:  start,
+		db:     s.db,
+	}
+
+	if len(start) > 0 {
+		it.Seek(start)
+	} else if len(prefix) > 0 {
+		it.Seek(prefix)
+	} else {
+		it.Rewind()
+	}
+
+	return iter
+}
+
+// Close releases the snapshot
+func (s *snapshotDB) Close() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if !s.closed {
+		s.closed = true
+		s.txn.Discard()
+	}
+	return nil
+}
+
+// HealthCheck implements the Database interface for snapshot
+func (s *snapshotDB) HealthCheck(ctx context.Context) (interface{}, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	if s.closed {
+		return nil, database.ErrClosed
+	}
+	// Snapshot is healthy if not closed
+	return nil, nil
+}
+
+// Compact is not supported for snapshots
+func (s *snapshotDB) Compact(start []byte, limit []byte) error {
+	return errors.New("cannot compact snapshot")
+}
+
+// GetSnapshot is not supported for snapshots
+func (s *snapshotDB) GetSnapshot() (database.Database, error) {
+	return nil, errors.New("cannot create snapshot of snapshot")
+}
+
+// Empty checks if the snapshot is empty
+func (s *snapshotDB) Empty() (bool, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	if s.closed {
+		return false, database.ErrClosed
+	}
+
+	opts := badger.DefaultIteratorOptions
+	opts.PrefetchValues = false
+	it := s.txn.NewIterator(opts)
+	defer it.Close()
+
+	it.Rewind()
+	return !it.Valid(), nil
+}
+
+// Len returns the number of keys in the snapshot
+func (s *snapshotDB) Len() (int, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	if s.closed {
+		return 0, database.ErrClosed
+	}
+
+	count := 0
+	opts := badger.DefaultIteratorOptions
+	opts.PrefetchValues = false
+	it := s.txn.NewIterator(opts)
+	defer it.Close()
+
+	for it.Rewind(); it.Valid(); it.Next() {
+		count++
+	}
+	return count, nil
+}
+
+// nopBatch is a no-op batch that returns errors
+type nopBatch struct {
+	err error
+}
+
+func (n *nopBatch) Put([]byte, []byte) error { return n.err }
+func (n *nopBatch) Delete([]byte) error      { return n.err }
+func (n *nopBatch) Size() int                { return 0 }
+func (n *nopBatch) Write() error             { return n.err }
+func (n *nopBatch) Reset()                   {}
+func (n *nopBatch) Replay(database.KeyValueWriterDeleter) error { return n.err }
+func (n *nopBatch) Inner() database.Batch    { return n }
