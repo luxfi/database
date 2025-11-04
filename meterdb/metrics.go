@@ -6,13 +6,13 @@ package meterdb
 import (
 	"fmt"
 
-	metrics "github.com/luxfi/metric"
-	"github.com/luxfi/node/utils/metric"
+	"github.com/luxfi/metric"
+	nodemetric "github.com/luxfi/node/utils/metric"
 	"github.com/luxfi/node/utils/wrappers"
 )
 
-func newSizeMetric(namespace, name string, reg metrics.Metrics, errs *wrappers.Errs) metric.Averager {
-	return metric.NewAveragerWithErrs(
+func newSizeMetric(namespace, name string, reg metric.Metrics, errs *wrappers.Errs) nodemetric.Averager {
+	return nodemetric.NewAveragerWithErrs(
 		fmt.Sprintf("%s_%s_size", namespace, name),
 		fmt.Sprintf("bytes passed in a %s call", name),
 		reg.Registry(),
@@ -20,8 +20,8 @@ func newSizeMetric(namespace, name string, reg metrics.Metrics, errs *wrappers.E
 	)
 }
 
-func newTimeMetric(namespace, name string, reg metrics.Metrics, errs *wrappers.Errs) metric.Averager {
-	return metric.NewAveragerWithErrs(
+func newTimeMetric(namespace, name string, reg metric.Metrics, errs *wrappers.Errs) nodemetric.Averager {
+	return nodemetric.NewAveragerWithErrs(
 		fmt.Sprintf("%s_%s", namespace, name),
 		fmt.Sprintf("time (in ns) of a %s", name),
 		reg.Registry(),
@@ -52,10 +52,10 @@ type dbMetrics struct {
 	iError,
 	iKey,
 	iValue,
-	iRelease metric.Averager
+	iRelease nodemetric.Averager
 }
 
-func newMetrics(namespace string, reg metrics.Metrics) (dbMetrics, error) {
+func newMetrics(namespace string, reg metric.Metrics) (dbMetrics, error) {
 	errs := wrappers.Errs{}
 	return dbMetrics{
 		readSize:    newSizeMetric(namespace, "read", reg, &errs),
