@@ -100,3 +100,30 @@ type Database interface {
 	io.Closer
 	HealthCheck(context.Context) (interface{}, error)
 }
+
+// HeightIndex provides height-based key-value storage for blockchain state.
+// Heights are stored as big-endian uint64 keys for efficient range queries.
+type HeightIndex interface {
+	// Put inserts the value at the given height.
+	//
+	// Note: [value] is safe to modify and read after calling Put.
+	//
+	// If [value] is nil or an empty slice, then when it's retrieved
+	// it may be nil or an empty slice.
+	Put(height uint64, value []byte) error
+
+	// Get retrieves the value at the given height.
+	// Returns ErrNotFound if the height does not exist.
+	//
+	// The returned byte slice is safe to read, but cannot be modified.
+	Get(height uint64) ([]byte, error)
+
+	// Has retrieves if a value exists at the given height.
+	Has(height uint64) (bool, error)
+
+	// Delete removes the value at the given height.
+	Delete(height uint64) error
+
+	// Close releases any resources associated with the index.
+	Close() error
+}
