@@ -57,7 +57,7 @@ func New(
 	case leveldb.Name:
 		db, err = newLevelDB(dbPath, config, logger, registerer, metricsPrefix)
 	case pebbledb.Name:
-		db, err = newPebbleDB(dbPath, config, logger, registerer, metricsPrefix)
+		db, err = newPebbleDB(dbPath, config, logger, registerer, metricsPrefix, readOnly)
 	case badgerdb.Name:
 		db, err = newBadgerDB(dbPath, config, logger, registerer, metricsPrefix)
 	case memdb.Name:
