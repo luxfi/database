@@ -544,6 +544,14 @@ func (i *iterator) Next() bool {
 		return false
 	}
 
+	// Check if underlying iterator is nil (shouldn't happen but be defensive)
+	if i.iter == nil {
+		i.err = database.ErrClosed
+		i.key = nil
+		i.value = nil
+		return false
+	}
+
 	// Check if database is closed
 	if i.db != nil {
 		i.db.closeMu.RLock()
@@ -573,6 +581,18 @@ func (i *iterator) Next() bool {
 			i.value = i.getValue()
 			return true
 		}
+		// Iterator was not valid on first call - nothing to iterate
+		i.key = nil
+		i.value = nil
+		return false
+	}
+
+	// Only call Next() if the iterator is currently valid
+	// (Badger's Next() panics if item is nil, which happens when not valid)
+	if !i.iter.Valid() {
+		i.key = nil
+		i.value = nil
+		return false
 	}
 
 	i.iter.Next()
