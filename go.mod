@@ -11,15 +11,15 @@ require (
 	github.com/gorilla/rpc v1.2.1
 	github.com/klauspost/compress v1.18.0
 	github.com/luxfi/consensus v1.22.5
-	github.com/luxfi/crypto v1.17.14
-	github.com/luxfi/geth v1.16.41
+	github.com/luxfi/crypto v1.17.18
+	github.com/luxfi/geth v1.16.46
 	github.com/luxfi/ids v1.2.2
 	github.com/luxfi/ledger-lux-go v1.0.0
 	github.com/luxfi/log v1.1.24
 	github.com/luxfi/math v1.0.0
 	github.com/luxfi/metric v1.4.5
 	github.com/luxfi/mock v0.1.0
-	github.com/luxfi/node v1.21.34
+	github.com/luxfi/node v1.22.2
 	github.com/mr-tron/base58 v1.2.0
 	github.com/nbutton23/zxcvbn-go v0.0.0-20210217022336-fa2cb2858354
 	github.com/prometheus/client_golang v1.23.2
@@ -45,7 +45,7 @@ require (
 	github.com/btcsuite/btcd/btcec/v2 v2.3.5 // indirect
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
-	github.com/cloudflare/circl v1.6.2-0.20251027185721-da1faa40b98c // indirect
+	github.com/cloudflare/circl v1.6.2-0.20251204010831-23491bd573cf // indirect
 	github.com/cockroachdb/errors v1.12.0 // indirect
 	github.com/cockroachdb/fifo v0.0.0-20240816210425-c5d0cb0b6fc0 // indirect
 	github.com/cockroachdb/logtags v0.0.0-20241215232642-bb51bb14a506 // indirect
