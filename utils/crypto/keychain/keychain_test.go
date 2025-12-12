@@ -351,27 +351,14 @@ func TestLedgerSignerFromIndices_SignHash(t *testing.T) {
 	expectedSignature2 := []byte{2, 2, 2}
 	expectedSignature3 := []byte{3, 3, 3}
 
-	// ledger returns an incorrect number of signatures
+	// ledger returns an error when asked for signature
 	ledger := keychainmock.NewLedger(ctrl)
 	ledger.EXPECT().GetAddresses([]uint32{0}).Return([]ids.ShortID{addr1}, nil).Times(1)
-	ledger.EXPECT().SignHash(toSign, uint32(0)).Return(expectedSignature1, nil).Times(1)
+	ledger.EXPECT().SignHash(toSign, uint32(0)).Return(nil, errTest).Times(1)
 	kc, err := NewLedgerKeychain(ledger, []uint32{0})
 	require.NoError(err)
 
 	s, b := kc.Get(addr1)
-	require.True(b)
-
-	_, err = s.SignHash(toSign)
-	require.ErrorIs(err, ErrInvalidNumSignatures)
-
-	// ledger returns an error when asked for signature
-	ledger = keychainmock.NewLedger(ctrl)
-	ledger.EXPECT().GetAddresses([]uint32{0}).Return([]ids.ShortID{addr1}, nil).Times(1)
-	ledger.EXPECT().SignHash(toSign, []uint32{0}).Return([][]byte{expectedSignature1}, errTest).Times(1)
-	kc, err = NewLedgerKeychain(ledger, []uint32{0})
-	require.NoError(err)
-
-	s, b = kc.Get(addr1)
 	require.True(b)
 
 	_, err = s.SignHash(toSign)

@@ -36,6 +36,9 @@ var (
 )
 
 func TestDecompressZipBombs(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping zip bomb test in short mode")
+	}
 	for compressionType, zipBomb := range zipBombs {
 		// Make sure that the hardcoded zip bomb would be a valid message.
 		require.Less(t, len(zipBomb), maxMessageSize)
