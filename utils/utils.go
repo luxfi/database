@@ -3,17 +3,6 @@
 
 package utils
 
-// Zero returns the zero value of type T
-func Zero[T any]() T {
-	var zero T
-	return zero
-}
-
-// Sortable is the interface required by slices.SortFunc
-type Sortable[T any] interface {
-	Compare(T) int
-}
-
 // Constants for common byte sizes
 const (
 	KiB = 1024       // 1 KiB
