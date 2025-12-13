@@ -299,10 +299,10 @@ func TestHeightIndexBoundaryValues(t *testing.T) {
 
 	// Test boundary values
 	boundaries := []uint64{
-		0,                    // min
-		1,                    // min + 1
-		^uint64(0) - 1,      // max - 1
-		^uint64(0),          // max
+		0,              // min
+		1,              // min + 1
+		^uint64(0) - 1, // max - 1
+		^uint64(0),     // max
 	}
 
 	for _, height := range boundaries {
