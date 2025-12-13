@@ -12,8 +12,6 @@ import (
 	"github.com/luxfi/database"
 )
 
-const KiB = 1024
-
 var (
 	// Benchmarks is a list of all database benchmarks
 	Benchmarks = map[string]func(b *testing.B, db database.Database, keys, values [][]byte){
