@@ -346,8 +346,8 @@ func (d *Database) GetSnapshot() (database.Database, error) {
 	// Create a new read-only transaction that acts as a snapshot
 	// This provides a consistent view of the database at this point in time
 	return &snapshotDB{
-		db:   d,
-		txn:  d.db.NewTransaction(false),
+		db:  d,
+		txn: d.db.NewTransaction(false),
 	}, nil
 }
 
@@ -696,18 +696,18 @@ func (n *nopIterator) Release()      {}
 
 // Config represents BadgerDB configuration
 type Config struct {
-	SyncWrites          bool   `json:"syncWrites"`
-	NumCompactors       int    `json:"numCompactors"`
-	NumMemtables        int    `json:"numMemtables"`
-	MemTableSize        int64  `json:"memTableSize"`
-	ValueLogFileSize    int64  `json:"valueLogFileSize"`
-	ValueLogMaxEntries  uint32 `json:"valueLogMaxEntries"`
-	BlockCacheSize      int64  `json:"blockCacheSize"`
-	IndexCacheSize      int64  `json:"indexCacheSize"`
-	BloomFalsePositive  float64 `json:"bloomFalsePositive"`
-	ValueThreshold      int    `json:"valueThreshold"`
-	Compression         string `json:"compression"`
-	ZSTDCompressionLevel int    `json:"zstdCompressionLevel"`
+	SyncWrites           bool    `json:"syncWrites"`
+	NumCompactors        int     `json:"numCompactors"`
+	NumMemtables         int     `json:"numMemtables"`
+	MemTableSize         int64   `json:"memTableSize"`
+	ValueLogFileSize     int64   `json:"valueLogFileSize"`
+	ValueLogMaxEntries   uint32  `json:"valueLogMaxEntries"`
+	BlockCacheSize       int64   `json:"blockCacheSize"`
+	IndexCacheSize       int64   `json:"indexCacheSize"`
+	BloomFalsePositive   float64 `json:"bloomFalsePositive"`
+	ValueThreshold       int     `json:"valueThreshold"`
+	Compression          string  `json:"compression"`
+	ZSTDCompressionLevel int     `json:"zstdCompressionLevel"`
 }
 
 // parseConfig parses JSON configuration for BadgerDB
@@ -986,10 +986,10 @@ type nopBatch struct {
 	err error
 }
 
-func (n *nopBatch) Put([]byte, []byte) error { return n.err }
-func (n *nopBatch) Delete([]byte) error      { return n.err }
-func (n *nopBatch) Size() int                { return 0 }
-func (n *nopBatch) Write() error             { return n.err }
-func (n *nopBatch) Reset()                   {}
+func (n *nopBatch) Put([]byte, []byte) error                    { return n.err }
+func (n *nopBatch) Delete([]byte) error                         { return n.err }
+func (n *nopBatch) Size() int                                   { return 0 }
+func (n *nopBatch) Write() error                                { return n.err }
+func (n *nopBatch) Reset()                                      {}
 func (n *nopBatch) Replay(database.KeyValueWriterDeleter) error { return n.err }
-func (n *nopBatch) Inner() database.Batch    { return n }
+func (n *nopBatch) Inner() database.Batch                       { return n }

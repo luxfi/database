@@ -10,8 +10,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/luxfi/database"
-	"github.com/luxfi/database/utils"
 )
+
+const KiB = 1024
 
 var (
 	// Benchmarks is a list of all database benchmarks
@@ -31,7 +32,7 @@ var (
 		// count, keySize, valueSize
 		{1024, 32, 32},
 		{1024, 256, 256},
-		{1024, 2 * utils.KiB, 2 * utils.KiB},
+		{1024, 2 * KiB, 2 * KiB},
 	}
 )
 

@@ -18,7 +18,11 @@ import (
 	"github.com/luxfi/crypto"
 	db "github.com/luxfi/database"
 	"github.com/luxfi/database/databasemock"
-	"github.com/luxfi/database/utils"
+)
+
+const (
+	KiB = 1024
+	MiB = 1024 * KiB
 )
 
 var (
@@ -590,8 +594,8 @@ func TestBatchInner(t *testing.T, db db.Database) {
 func TestBatchLargeSize(t *testing.T, db db.Database) {
 	require := require.New(t)
 
-	totalSize := 8 * utils.MiB
-	elementSize := 4 * utils.KiB
+	totalSize := 8 * MiB
+	elementSize := 4 * KiB
 	pairSize := 2 * elementSize // 8 KiB
 
 	bytes := crypto.RandomBytes(totalSize)
@@ -1156,7 +1160,7 @@ func TestConcurrentBatches(t *testing.T, db db.Database) {
 	numBatches := 10
 	keysPerBatch := 50
 	keySize := 32
-	valueSize := utils.KiB
+	valueSize := KiB
 
 	require.NoError(t, runConcurrentBatches(
 		db,
