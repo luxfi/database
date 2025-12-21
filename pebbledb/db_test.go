@@ -9,23 +9,21 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 
 	"github.com/luxfi/database"
-	"github.com/luxfi/log"
-	"github.com/luxfi/metric"
+	"github.com/luxfi/database/dbtest"
 )
 
-func newDB(t testing.TB) *Database {
+func newDB(t testing.TB) database.Database {
 	folder := t.TempDir()
-	db, err := New(folder, nil, log.NewNoOpLogger(), metrics.NewRegistry())
+	db, err := New(folder, 16, 16, "test", false)
 	require.NoError(t, err)
-	return db.(*Database)
+	return db
 }
 
 func TestInterface(t *testing.T) {
-	for name, test := range database.Tests {
+	for name, test := range dbtest.Tests {
 		t.Run(name, func(t *testing.T) {
 			db := newDB(t)
 			test(t, db)
@@ -36,29 +34,36 @@ func TestInterface(t *testing.T) {
 
 func FuzzKeyValue(f *testing.F) {
 	db := newDB(f)
-	database.FuzzKeyValue(f, db)
-	_ = db.Close()
+	defer db.Close()
+
+	dbtest.FuzzKeyValue(f, db)
 }
 
 func FuzzNewIteratorWithPrefix(f *testing.F) {
 	db := newDB(f)
-	database.FuzzNewIteratorWithPrefix(f, db)
-	_ = db.Close()
+	defer db.Close()
+
+	dbtest.FuzzNewIteratorWithPrefix(f, db)
 }
 
 func FuzzNewIteratorWithStartAndPrefix(f *testing.F) {
 	db := newDB(f)
-	database.FuzzNewIteratorWithStartAndPrefix(f, db)
-	_ = db.Close()
+	defer db.Close()
+
+	dbtest.FuzzNewIteratorWithStartAndPrefix(f, db)
 }
 
 func BenchmarkInterface(b *testing.B) {
-	for _, size := range database.BenchmarkSizes {
-		keys, values := database.SetupBenchmark(b, size[0], size[1], size[2])
-		for name, bench := range database.Benchmarks {
+	for _, size := range dbtest.BenchmarkSizes {
+		keys, values := dbtest.SetupBenchmark(b, size[0], size[1], size[2])
+		for name, bench := range dbtest.Benchmarks {
 			b.Run(fmt.Sprintf("pebble_%d_pairs_%d_keys_%d_values_%s", size[0], size[1], size[2], name), func(b *testing.B) {
 				db := newDB(b)
+
 				bench(b, db, keys, values)
+
+				// The database may have been closed by the test, so we don't care if it
+				// errors here.
 				_ = db.Close()
 			})
 		}
