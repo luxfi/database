@@ -8,9 +8,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 
 	db "github.com/luxfi/database"
-	"github.com/luxfi/database/leveldb"
+	"github.com/luxfi/database/badgerdb"
 	"github.com/luxfi/database/memdb"
 	"github.com/luxfi/database/meterdb"
 	"github.com/luxfi/database/prefixdb"
@@ -18,6 +19,28 @@ import (
 	"github.com/luxfi/metric"
 	"github.com/prometheus/client_golang/prometheus"
 )
+
+// DatabaseCreator is a function that creates a database
+type DatabaseCreator func(path string, config *Config, registerer prometheus.Registerer) (db.Database, error)
+
+var (
+	creatorsMu sync.RWMutex
+	creators   = make(map[string]DatabaseCreator)
+)
+
+// RegisterDatabaseType registers a database creator for a given type
+func RegisterDatabaseType(name string, creator DatabaseCreator) {
+	creatorsMu.Lock()
+	defer creatorsMu.Unlock()
+	creators[name] = creator
+}
+
+func init() {
+	// Register badgerdb as default
+	RegisterDatabaseType("badgerdb", func(path string, config *Config, registerer prometheus.Registerer) (db.Database, error) {
+		return badgerdb.New(path, nil, config.Namespace, registerer)
+	})
+}
 
 // Manager is a database manager that can create new database instances.
 type Manager struct {
@@ -35,7 +58,7 @@ func NewManager(baseDir string, registerer prometheus.Registerer) *Manager {
 
 // Config defines the database configuration.
 type Config struct {
-	// Type is the database type ("leveldb", "pebbledb", "memdb")
+	// Type is the database type ("badgerdb", "memdb", or optionally "leveldb", "pebbledb" if built with those tags)
 	Type string
 
 	// Path is the database path (relative to base directory)
@@ -63,6 +86,18 @@ type Config struct {
 	ReadOnly bool
 }
 
+// AvailableTypes returns a list of available database types
+func AvailableTypes() []string {
+	creatorsMu.RLock()
+	defer creatorsMu.RUnlock()
+	types := make([]string, 0, len(creators)+1)
+	types = append(types, "memdb")
+	for name := range creators {
+		types = append(types, name)
+	}
+	return types
+}
+
 // New creates a new database instance.
 func (m *Manager) New(config *Config) (db.Database, error) {
 	if config == nil {
@@ -77,38 +112,25 @@ func (m *Manager) New(config *Config) (db.Database, error) {
 	case "memdb", "memory":
 		database = memdb.New()
 
-	case "leveldb":
-		path := filepath.Join(m.baseDir, config.Path)
-		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
-			return nil, fmt.Errorf("failed to create directory: %w", err)
-		}
-		database, err = leveldb.New(path, config.CacheSize, config.CacheSize/2, config.HandleCap)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create leveldb: %w", err)
+	default:
+		// Look up registered creator
+		creatorsMu.RLock()
+		creator, ok := creators[config.Type]
+		creatorsMu.RUnlock()
+
+		if !ok {
+			return nil, fmt.Errorf("unsupported database type: %s (available: %v)", config.Type, AvailableTypes())
 		}
 
-	case "pebbledb":
-		path := filepath.Join(m.baseDir, config.Path)
-		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
-			return nil, fmt.Errorf("failed to create directory: %w", err)
-		}
-		database, err = newPebbleDB(path, config.CacheSize, config.HandleCap, config.Namespace, config.ReadOnly)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create pebbledb: %w", err)
-		}
-
-	case "badgerdb":
 		path := filepath.Join(m.baseDir, config.Path)
 		if err := os.MkdirAll(path, 0755); err != nil {
 			return nil, fmt.Errorf("failed to create directory: %w", err)
 		}
-		database, err = newBadgerDB(path, nil, config.Namespace, m.registerer)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create badgerdb: %w", err)
-		}
 
-	default:
-		return nil, fmt.Errorf("unsupported database type: %s", config.Type)
+		database, err = creator(path, config, m.registerer)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create %s: %w", config.Type, err)
+		}
 	}
 
 	// Add prefix wrapper if needed
@@ -132,26 +154,6 @@ func (m *Manager) New(config *Config) (db.Database, error) {
 	}
 
 	return database, nil
-}
-
-// DefaultLevelDBConfig returns a default LevelDB configuration.
-func DefaultLevelDBConfig(path string) *Config {
-	return &Config{
-		Type:      "leveldb",
-		Path:      path,
-		CacheSize: 16,
-		HandleCap: 1024,
-	}
-}
-
-// DefaultPebbleDBConfig returns a default PebbleDB configuration.
-func DefaultPebbleDBConfig(path string) *Config {
-	return &Config{
-		Type:      "pebbledb",
-		Path:      path,
-		CacheSize: 512,
-		HandleCap: 1024,
-	}
 }
 
 // DefaultBadgerDBConfig returns a default BadgerDB configuration.

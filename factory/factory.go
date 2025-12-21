@@ -5,18 +5,65 @@ package factory
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/luxfi/database"
 	"github.com/luxfi/database/badgerdb"
-	"github.com/luxfi/database/leveldb"
 	"github.com/luxfi/database/memdb"
 	"github.com/luxfi/database/meterdb"
-	"github.com/luxfi/database/pebbledb"
 	"github.com/luxfi/database/versiondb"
 	"github.com/luxfi/log"
 	"github.com/luxfi/metric"
 	"github.com/prometheus/client_golang/prometheus"
 )
+
+// DatabaseFactory is a function that creates a database
+type DatabaseFactory func(
+	dbPath string,
+	config []byte,
+	logger log.Logger,
+	registerer prometheus.Registerer,
+	metricsPrefix string,
+	readOnly bool,
+) (database.Database, error)
+
+var (
+	factoryMu  sync.RWMutex
+	factories  = make(map[string]DatabaseFactory)
+)
+
+// RegisterDatabase registers a database factory for a given name
+func RegisterDatabase(name string, factory DatabaseFactory) {
+	factoryMu.Lock()
+	defer factoryMu.Unlock()
+	factories[name] = factory
+}
+
+// AvailableDatabases returns the list of available database types
+func AvailableDatabases() []string {
+	factoryMu.RLock()
+	defer factoryMu.RUnlock()
+	names := make([]string, 0, len(factories)+2)
+	names = append(names, badgerdb.Name, memdb.Name)
+	for name := range factories {
+		names = append(names, name)
+	}
+	return names
+}
+
+func init() {
+	// badgerdb is always available (default)
+	RegisterDatabase(badgerdb.Name, func(
+		dbPath string,
+		config []byte,
+		logger log.Logger,
+		registerer prometheus.Registerer,
+		metricsPrefix string,
+		readOnly bool,
+	) (database.Database, error) {
+		return badgerdb.New(dbPath, config, "badgerdb", registerer)
+	})
+}
 
 // New creates a new database with the provided configuration
 func New(
@@ -53,27 +100,25 @@ func New(
 		registerer = reg
 	}
 
-	switch name {
-	case leveldb.Name:
-		db, err = newLevelDB(dbPath, config, logger, registerer, metricsPrefix)
-	case pebbledb.Name:
-		db, err = newPebbleDB(dbPath, config, logger, registerer, metricsPrefix, readOnly)
-	case badgerdb.Name:
-		db, err = newBadgerDB(dbPath, config, logger, registerer, metricsPrefix)
-	case memdb.Name:
+	// Handle memdb specially (no factory needed)
+	if name == memdb.Name {
 		db = memdb.New()
-	default:
-		return nil, fmt.Errorf("unknown database type: %s", name)
-	}
+	} else {
+		// Look up factory
+		factoryMu.RLock()
+		factory, ok := factories[name]
+		factoryMu.RUnlock()
 
-	if err != nil {
-		return nil, err
-	}
+		if !ok {
+			available := AvailableDatabases()
+			return nil, fmt.Errorf("unknown database type: %s (available: %v)", name, available)
+		}
 
-	// TODO: Fix logger interface mismatch between luxfi/log and internal logging
-	// For now, skip corruptabledb wrapper
-	// log := logging.NewZapAdapter(logger)
-	// db = corruptabledb.New(db, log)
+		db, err = factory(dbPath, config, logger, registerer, metricsPrefix, readOnly)
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	// Wrap with versiondb if read-only (except memdb)
 	if readOnly && name != memdb.Name {
