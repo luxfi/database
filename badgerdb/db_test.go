@@ -3,12 +3,13 @@
 
 //go:build test
 
-package leveldb
+package badgerdb
 
 import (
 	"fmt"
 	"testing"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 
 	"github.com/luxfi/database"
@@ -17,7 +18,7 @@ import (
 
 func newDB(t testing.TB) database.Database {
 	folder := t.TempDir()
-	db, err := New(folder, 16, 16, 16)
+	db, err := New(folder, nil, "test", prometheus.NewRegistry())
 	require.NoError(t, err)
 	return db
 }
@@ -57,7 +58,7 @@ func BenchmarkInterface(b *testing.B) {
 	for _, size := range dbtest.BenchmarkSizes {
 		keys, values := dbtest.SetupBenchmark(b, size[0], size[1], size[2])
 		for name, bench := range dbtest.Benchmarks {
-			b.Run(fmt.Sprintf("leveldb_%d_pairs_%d_keys_%d_values_%s", size[0], size[1], size[2], name), func(b *testing.B) {
+			b.Run(fmt.Sprintf("badgerdb_%d_pairs_%d_keys_%d_values_%s", size[0], size[1], size[2], name), func(b *testing.B) {
 				db := newDB(b)
 
 				bench(b, db, keys, values)
