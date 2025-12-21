@@ -6,7 +6,7 @@ require (
 	github.com/cockroachdb/pebble v1.1.5
 	github.com/dgraph-io/badger/v4 v4.8.0
 	github.com/luxfi/cache v1.0.0
-	github.com/luxfi/crypto v1.17.22
+	github.com/luxfi/crypto v1.17.25
 	github.com/luxfi/geth v1.16.52
 	github.com/luxfi/ids v1.2.4
 	github.com/luxfi/log v1.1.26
