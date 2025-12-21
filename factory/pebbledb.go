@@ -1,6 +1,8 @@
 // Copyright (C) 2020-2025, Lux Industries Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 
+//go:build pebbledb
+
 package factory
 
 import (
@@ -9,6 +11,10 @@ import (
 	"github.com/luxfi/log"
 	"github.com/prometheus/client_golang/prometheus"
 )
+
+func init() {
+	RegisterDatabase(pebbledb.Name, newPebbleDB)
+}
 
 func newPebbleDB(
 	dbPath string,
