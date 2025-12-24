@@ -11,7 +11,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/luxfi/utils"
+	luxmath "github.com/luxfi/math"
 )
 
 func TestSortednessUint64(t *testing.T) {
@@ -29,7 +29,7 @@ func TestSortednessUint64(t *testing.T) {
 	for i, val := range ints {
 		intBytes[i] = PackUInt64(val)
 	}
-	require.True(t, utils.IsSortedBytes(intBytes))
+	require.True(t, luxmath.IsSortedBytes(intBytes))
 }
 
 func TestSortednessUint32(t *testing.T) {
@@ -47,5 +47,5 @@ func TestSortednessUint32(t *testing.T) {
 	for i, val := range ints {
 		intBytes[i] = PackUInt32(val)
 	}
-	require.True(t, utils.IsSortedBytes(intBytes))
+	require.True(t, luxmath.IsSortedBytes(intBytes))
 }
