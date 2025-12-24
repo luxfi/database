@@ -11,8 +11,8 @@ require (
 	github.com/luxfi/geth v1.16.52
 	github.com/luxfi/ids v1.2.4
 	github.com/luxfi/log v1.1.26
+	github.com/luxfi/math v1.2.0
 	github.com/luxfi/metric v1.4.8
-	github.com/luxfi/utils v1.0.1
 	github.com/prometheus/client_golang v1.23.2
 	github.com/stretchr/testify v1.11.1
 	github.com/syndtr/goleveldb v1.0.1-0.20220614013038-64ee5596c38a
