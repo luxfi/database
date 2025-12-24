@@ -11,7 +11,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/luxfi/node/utils"
+	"github.com/luxfi/utils"
 )
 
 func TestSortednessUint64(t *testing.T) {
