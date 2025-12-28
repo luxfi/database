@@ -334,6 +334,20 @@ func (d *Database) Compact(start []byte, limit []byte) error {
 	return err
 }
 
+// Sync implements the database.Syncer interface
+// It flushes all buffered writes to persistent storage.
+func (d *Database) Sync() error {
+	d.closeMu.RLock()
+	defer d.closeMu.RUnlock()
+
+	if d.closed {
+		return database.ErrClosed
+	}
+
+	// BadgerDB's Sync() flushes all pending writes to disk
+	return d.db.Sync()
+}
+
 // GetSnapshot implements the database.Database interface
 func (d *Database) GetSnapshot() (database.Database, error) {
 	d.closeMu.RLock()
@@ -935,6 +949,11 @@ func (s *snapshotDB) HealthCheck(ctx context.Context) (interface{}, error) {
 // Compact is not supported for snapshots
 func (s *snapshotDB) Compact(start []byte, limit []byte) error {
 	return errors.New("cannot compact snapshot")
+}
+
+// Sync is not supported for snapshots (they are read-only)
+func (s *snapshotDB) Sync() error {
+	return nil // Snapshots are read-only, nothing to sync
 }
 
 // GetSnapshot is not supported for snapshots

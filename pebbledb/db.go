@@ -355,3 +355,18 @@ func (d *Database) Compact(start []byte, end []byte) error {
 
 	return updateError(d.pebbleDB.Compact(start, end, true /* parallelize */))
 }
+
+// Sync implements the database.Syncer interface
+// It flushes all buffered writes to persistent storage.
+func (d *Database) Sync() error {
+	d.lock.RLock()
+	defer d.lock.RUnlock()
+
+	if d.closed {
+		return database.ErrClosed
+	}
+
+	// Pebble's LogData with Sync option forces a WAL sync
+	// This ensures all written data is persisted to disk
+	return updateError(d.pebbleDB.LogData(nil, pebble.Sync))
+}

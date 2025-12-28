@@ -160,6 +160,18 @@ func (db *Database) Compact(start, limit []byte) error {
 	return db.db.Compact(start, limit)
 }
 
+// Sync implements the database.Syncer interface.
+// It flushes all buffered writes to persistent storage by delegating to the underlying database.
+func (db *Database) Sync() error {
+	db.lock.Lock()
+	defer db.lock.Unlock()
+
+	if db.mem == nil {
+		return database.ErrClosed
+	}
+	return db.db.Sync()
+}
+
 // SetDatabase changes the underlying database to the specified database
 func (db *Database) SetDatabase(newDB database.Database) error {
 	db.lock.Lock()

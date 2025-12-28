@@ -40,6 +40,9 @@ var (
 	compactLabel = metric.Labels{
 		methodLabel: "compact",
 	}
+	syncLabel = metric.Labels{
+		methodLabel: "sync",
+	}
 	closeLabel = metric.Labels{
 		methodLabel: "close",
 	}
@@ -212,6 +215,16 @@ func (db *Database) Compact(start, limit []byte) error {
 
 	db.calls.With(compactLabel).Inc()
 	db.duration.With(compactLabel).Add(float64(duration))
+	return err
+}
+
+func (db *Database) Sync() error {
+	startTime := time.Now()
+	err := db.db.Sync()
+	duration := time.Since(startTime)
+
+	db.calls.With(syncLabel).Inc()
+	db.duration.With(syncLabel).Add(float64(duration))
 	return err
 }
 

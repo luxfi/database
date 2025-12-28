@@ -57,6 +57,17 @@ func (db *Database) Close() error {
 	return nil
 }
 
+// Sync implements db.Database. For memdb, this is a no-op since all data is in memory.
+func (db *Database) Sync() error {
+	db.lock.RLock()
+	defer db.lock.RUnlock()
+
+	if db.db == nil {
+		return database.ErrClosed
+	}
+	return nil
+}
+
 // HealthCheck implements db.Database.
 func (db *Database) HealthCheck(ctx context.Context) (interface{}, error) {
 	db.lock.RLock()
