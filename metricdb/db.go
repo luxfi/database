@@ -188,6 +188,11 @@ func (mdb *Database) Compact(start []byte, limit []byte) error {
 	return mdb.db.Compact(start, limit)
 }
 
+// Sync implements the database.Syncer interface.
+func (mdb *Database) Sync() error {
+	return mdb.db.Sync()
+}
+
 // batch wraps a database.Batch to record metrics.
 type batch struct {
 	database.Batch

@@ -111,6 +111,11 @@ func (p *Database) Compact(start, limit []byte) error {
 	return p.db.Compact(start, limit)
 }
 
+// Sync implements the database.Syncer interface by delegating to the underlying database.
+func (p *Database) Sync() error {
+	return p.db.Sync()
+}
+
 // prefixKey returns a key with the prefix appended.
 func (p *Database) prefixKey(key []byte) []byte {
 	buf := p.bufferPool.Get().([]byte)[:0]

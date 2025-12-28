@@ -133,6 +133,16 @@ func (db *Database) Compact(start, limit []byte) error {
 	return db.db.Compact(start, limit)
 }
 
+func (db *Database) Sync() error {
+	db.lock.Lock()
+	defer db.lock.Unlock()
+
+	if db.closed {
+		return database.ErrClosed
+	}
+	return db.db.Sync()
+}
+
 func (db *Database) Close() error {
 	db.lock.Lock()
 	defer db.lock.Unlock()

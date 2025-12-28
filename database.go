@@ -90,6 +90,18 @@ type Compacter interface {
 	Compact(start []byte, limit []byte) error
 }
 
+// Syncer wraps the Sync method of a backing data store.
+type Syncer interface {
+	// Sync flushes all buffered writes to persistent storage.
+	// This ensures that data written before Sync is called will
+	// survive a crash or power failure. This is important for
+	// databases configured with async writes for performance.
+	//
+	// Implementations should ensure all in-memory buffers (memtables,
+	// write-ahead logs, etc.) are flushed to disk.
+	Sync() error
+}
+
 // Database contains all the methods required to allow handling different
 // key-value data stores backing the database.
 type Database interface {
@@ -97,6 +109,7 @@ type Database interface {
 	Batcher
 	Iteratee
 	Compacter
+	Syncer
 	io.Closer
 	HealthCheck(context.Context) (interface{}, error)
 }

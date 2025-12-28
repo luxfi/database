@@ -202,6 +202,17 @@ func (d *Database) Compact(start []byte, limit []byte) error {
 	return updateError(d.db.CompactRange(util.Range{Start: start, Limit: limit}))
 }
 
+// Sync implements the database.Syncer interface
+// It flushes all buffered writes to persistent storage.
+func (d *Database) Sync() error {
+	if d.closed.Load() {
+		return database.ErrClosed
+	}
+	// LevelDB doesn't have a direct Sync method.
+	// We use an empty batch write with Sync option to force a WAL sync.
+	return updateError(d.db.Write(new(leveldb.Batch), &opt.WriteOptions{Sync: true}))
+}
+
 // batch is a batch of operations to be written atomically.
 type batch struct {
 	b *leveldb.Batch

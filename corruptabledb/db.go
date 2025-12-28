@@ -83,6 +83,13 @@ func (db *Database) Compact(start []byte, limit []byte) error {
 	return db.handleError(db.Database.Compact(start, limit))
 }
 
+func (db *Database) Sync() error {
+	if err := db.corrupted(); err != nil {
+		return err
+	}
+	return db.handleError(db.Database.Sync())
+}
+
 func (db *Database) Close() error {
 	return db.handleError(db.Database.Close())
 }
