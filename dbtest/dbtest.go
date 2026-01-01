@@ -6,13 +6,13 @@ package dbtest
 import (
 	"bytes"
 	"io"
+	"maps"
 	"math/rand"
 	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
-	"golang.org/x/exp/maps"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/luxfi/crypto"
@@ -1297,7 +1297,7 @@ func FuzzNewIteratorWithPrefix(f *testing.F, db db.Database) {
 
 			require.NoError(db.Put(key, value))
 		}
-		expectedList := maps.Keys(expected)
+		expectedList := slices.Collect(maps.Keys(expected))
 		slices.Sort(expectedList)
 
 		iter := db.NewIteratorWithPrefix(prefix)
@@ -1364,7 +1364,7 @@ func FuzzNewIteratorWithStartAndPrefix(f *testing.F, db db.Database) {
 			require.NoError(db.Put(key, value))
 		}
 
-		expectedList := maps.Keys(expected)
+		expectedList := slices.Collect(maps.Keys(expected))
 		slices.Sort(expectedList)
 
 		iter := db.NewIteratorWithStartAndPrefix(start, prefix)

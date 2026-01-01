@@ -5,10 +5,10 @@ package memdb
 
 import (
 	"bytes"
+	"maps"
 	"slices"
 
 	database "github.com/luxfi/database"
-	"golang.org/x/exp/maps"
 )
 
 // iterator is an iterator over the in-memory database.
@@ -40,7 +40,7 @@ func newIterator(
 		start = prefix
 	}
 
-	keys := maps.Keys(db)
+	keys := slices.Collect(maps.Keys(db))
 	slices.Sort(keys)
 
 	// Remove all keys that don't have the prefix
