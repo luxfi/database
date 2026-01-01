@@ -5,10 +5,10 @@ package memdb
 
 import (
 	"context"
+	"maps"
 	"sync"
 
 	database "github.com/luxfi/database"
-	"golang.org/x/exp/maps"
 )
 
 const (
