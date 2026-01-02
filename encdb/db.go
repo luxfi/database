@@ -12,7 +12,7 @@ import (
 
 	"golang.org/x/crypto/chacha20poly1305"
 
-	"github.com/luxfi/crypto/hashing"
+	"github.com/luxfi/crypto/hash"
 	"github.com/luxfi/database"
 )
 
@@ -32,7 +32,7 @@ type Database struct {
 
 // New returns a new encrypted database
 func New(password []byte, db database.Database) (*Database, error) {
-	h := hashing.ComputeHash256(password)
+	h := hash.ComputeHash256(password)
 	aead, err := chacha20poly1305.NewX(h)
 	return &Database{
 		cipher: aead,
