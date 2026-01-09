@@ -5,6 +5,7 @@ package meterdb
 
 import (
 	"context"
+	"io"
 	"time"
 
 	"github.com/luxfi/database"
@@ -48,6 +49,12 @@ var (
 	}
 	healthCheckLabel = metric.Labels{
 		methodLabel: "health_check",
+	}
+	backupLabel = metric.Labels{
+		methodLabel: "backup",
+	}
+	loadLabel = metric.Labels{
+		methodLabel: "load",
 	}
 	batchPutLabel = metric.Labels{
 		methodLabel: "batch_put",
@@ -246,6 +253,26 @@ func (db *Database) HealthCheck(ctx context.Context) (interface{}, error) {
 	db.calls.With(healthCheckLabel).Inc()
 	db.duration.With(healthCheckLabel).Add(float64(duration))
 	return details, err
+}
+
+func (db *Database) Backup(w io.Writer, since uint64) (uint64, error) {
+	start := time.Now()
+	version, err := db.db.Backup(w, since)
+	duration := time.Since(start)
+
+	db.calls.With(backupLabel).Inc()
+	db.duration.With(backupLabel).Add(float64(duration))
+	return version, err
+}
+
+func (db *Database) Load(r io.Reader) error {
+	start := time.Now()
+	err := db.db.Load(r)
+	duration := time.Since(start)
+
+	db.calls.With(loadLabel).Inc()
+	db.duration.With(loadLabel).Add(float64(duration))
+	return err
 }
 
 type batch struct {

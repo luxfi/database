@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"sync"
 	"time"
 
@@ -412,6 +413,31 @@ func (d *Database) Len() (int, error) {
 		return nil
 	})
 	return count, err
+}
+
+// Backup implements the database.Database interface
+func (d *Database) Backup(w io.Writer, since uint64) (uint64, error) {
+	d.closeMu.RLock()
+	defer d.closeMu.RUnlock()
+
+	if d.closed {
+		return 0, database.ErrClosed
+	}
+
+	return d.db.Backup(w, since)
+}
+
+// Load implements the database.Database interface
+func (d *Database) Load(r io.Reader) error {
+	d.closeMu.RLock()
+	defer d.closeMu.RUnlock()
+
+	if d.closed {
+		return database.ErrClosed
+	}
+
+	// 16 is a reasonable default for maxPendingWrites
+	return d.db.Load(r, 16)
 }
 
 // batch represents a batch of database operations
@@ -998,6 +1024,16 @@ func (s *snapshotDB) Len() (int, error) {
 		count++
 	}
 	return count, nil
+}
+
+// Backup is not supported for snapshots
+func (s *snapshotDB) Backup(w io.Writer, since uint64) (uint64, error) {
+	return 0, errors.New("cannot backup snapshot")
+}
+
+// Load is not supported for snapshots
+func (s *snapshotDB) Load(r io.Reader) error {
+	return errors.New("cannot load into snapshot")
 }
 
 // nopBatch is a no-op batch that returns errors

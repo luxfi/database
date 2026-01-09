@@ -6,6 +6,7 @@ package corruptabledb
 import (
 	"context"
 	"fmt"
+	"io"
 	"sync"
 
 	"github.com/luxfi/database"
@@ -100,6 +101,21 @@ func (db *Database) HealthCheck(ctx context.Context) (interface{}, error) {
 	}
 	details, err := db.Database.HealthCheck(ctx)
 	return details, db.handleError(err)
+}
+
+func (db *Database) Backup(w io.Writer, since uint64) (uint64, error) {
+	if err := db.corrupted(); err != nil {
+		return 0, err
+	}
+	version, err := db.Database.Backup(w, since)
+	return version, db.handleError(err)
+}
+
+func (db *Database) Load(r io.Reader) error {
+	if err := db.corrupted(); err != nil {
+		return err
+	}
+	return db.handleError(db.Database.Load(r))
 }
 
 func (db *Database) NewBatch() database.Batch {
