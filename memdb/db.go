@@ -5,6 +5,8 @@ package memdb
 
 import (
 	"context"
+	"errors"
+	"io"
 	"maps"
 	"sync"
 
@@ -77,6 +79,14 @@ func (db *Database) HealthCheck(ctx context.Context) (interface{}, error) {
 		return nil, database.ErrClosed
 	}
 	return nil, nil
+}
+
+func (db *Database) Backup(io.Writer, uint64) (uint64, error) {
+	return 0, errors.New("backup not supported for memdb")
+}
+
+func (db *Database) Load(io.Reader) error {
+	return errors.New("load not supported for memdb")
 }
 
 // Has implements db.Database.

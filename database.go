@@ -112,6 +112,17 @@ type Database interface {
 	Syncer
 	io.Closer
 	HealthCheck(context.Context) (interface{}, error)
+
+	// Backup performs a backup of the database to the provided writer.
+	// This should be a consistent snapshot of the database state.
+	// since: 0 for full backup, or the version of the last backup for incremental.
+	// returns: the version (timestamp/sequence) of this backup, to be used for the next incremental.
+	Backup(w io.Writer, since uint64) (uint64, error)
+
+	// Load restores the database from the provided reader.
+	// This will overwrite the current database state with the backup.
+	// Note: The database should generally be empty or fresh when calling Load.
+	Load(r io.Reader) error
 }
 
 // HeightIndex provides height-based key-value storage for blockchain state.

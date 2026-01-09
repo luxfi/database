@@ -5,6 +5,7 @@ package prefixdb
 
 import (
 	"context"
+	"io"
 	"sync"
 
 	"github.com/luxfi/database"
@@ -45,6 +46,14 @@ func (p *Database) Close() error {
 // HealthCheck implements the database.Database interface.
 func (p *Database) HealthCheck(ctx context.Context) (interface{}, error) {
 	return p.db.HealthCheck(ctx)
+}
+
+func (p *Database) Backup(w io.Writer, since uint64) (uint64, error) {
+	return p.db.Backup(w, since)
+}
+
+func (p *Database) Load(r io.Reader) error {
+	return p.db.Load(r)
 }
 
 // Has implements the database.Database interface.

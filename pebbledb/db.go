@@ -7,6 +7,8 @@ package pebbledb
 
 import (
 	"context"
+	"errors"
+	"io"
 	"runtime"
 	"sync"
 
@@ -170,6 +172,14 @@ func (d *Database) HealthCheck(ctx context.Context) (interface{}, error) {
 		return nil, database.ErrClosed
 	}
 	return nil, nil
+}
+
+func (d *Database) Backup(io.Writer, uint64) (uint64, error) {
+	return 0, errors.New("backup not supported for pebbledb")
+}
+
+func (d *Database) Load(io.Reader) error {
+	return errors.New("load not supported for pebbledb")
 }
 
 // Has retrieves if a key is present in the key-value store.

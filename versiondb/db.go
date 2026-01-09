@@ -5,6 +5,7 @@ package versiondb
 
 import (
 	"context"
+	"io"
 	"slices"
 	"strings"
 	"sync"
@@ -283,6 +284,28 @@ func (db *Database) HealthCheck(ctx context.Context) (interface{}, error) {
 		return nil, database.ErrClosed
 	}
 	return db.db.HealthCheck(ctx)
+}
+
+func (db *Database) Backup(w io.Writer, since uint64) (uint64, error) {
+	db.lock.RLock()
+	defer db.lock.RUnlock()
+
+	if db.mem == nil {
+		return 0, database.ErrClosed
+	}
+	// Backup the underlying database
+	return db.db.Backup(w, since)
+}
+
+func (db *Database) Load(r io.Reader) error {
+	db.lock.Lock()
+	defer db.lock.Unlock()
+
+	if db.mem == nil {
+		return database.ErrClosed
+	}
+	// Load into the underlying database
+	return db.db.Load(r)
 }
 
 type batch struct {

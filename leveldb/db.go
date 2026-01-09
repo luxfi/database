@@ -8,6 +8,8 @@ package leveldb
 import (
 	"bytes"
 	"context"
+	"errors"
+	"io"
 	"slices"
 	"sync"
 	"sync/atomic"
@@ -88,6 +90,14 @@ func (d *Database) HealthCheck(ctx context.Context) (interface{}, error) {
 	}
 	_, err := d.db.GetProperty("leveldb.stats")
 	return nil, updateError(err)
+}
+
+func (d *Database) Backup(io.Writer, uint64) (uint64, error) {
+	return 0, errors.New("backup not supported for leveldb")
+}
+
+func (d *Database) Load(io.Reader) error {
+	return errors.New("load not supported for leveldb")
 }
 
 // Has implements database.Database.
