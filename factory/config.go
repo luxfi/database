@@ -6,7 +6,7 @@ package factory
 import (
 	"github.com/luxfi/database"
 	"github.com/luxfi/log"
-	"github.com/prometheus/client_golang/prometheus"
+	"github.com/luxfi/metric"
 )
 
 // DatabaseConfig is a convenience struct for database configuration
@@ -16,7 +16,7 @@ type DatabaseConfig struct {
 	Name           string
 	ReadOnly       bool
 	Config         []byte
-	MetricsReg     prometheus.Registerer
+	MetricsReg     metric.Registerer
 	Logger         log.Logger
 	MetricsPrefix  string
 	MeterDBRegName string
@@ -25,8 +25,8 @@ type DatabaseConfig struct {
 // NewFromConfig creates a new database from a DatabaseConfig
 func NewFromConfig(cfg DatabaseConfig) (database.Database, error) {
 	// Default logger if not provided
-	if cfg.Logger == nil {
-		cfg.Logger = log.NewNoOpLogger()
+	if cfg.Logger.IsZero() {
+		cfg.Logger = log.Noop()
 	}
 
 	// Convert Registerer to interface{} for the factory

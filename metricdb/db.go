@@ -8,87 +8,38 @@ import (
 	"time"
 
 	"github.com/luxfi/database"
-	"github.com/prometheus/client_golang/prometheus"
+	"github.com/luxfi/metric"
 )
 
 // Database wraps a database and records metrics for each operation.
 type Database struct {
 	db database.Database
 
-	readDuration  prometheus.Histogram
-	writeDuration prometheus.Histogram
-	readSize      prometheus.Histogram
-	writeSize     prometheus.Histogram
-	readCount     prometheus.Counter
-	writeCount    prometheus.Counter
-	deleteCount   prometheus.Counter
+	readDuration  metric.Histogram
+	writeDuration metric.Histogram
+	readSize      metric.Histogram
+	writeSize     metric.Histogram
+	readCount     metric.Counter
+	writeCount    metric.Counter
+	deleteCount   metric.Counter
 }
 
 // New returns a new database that records metrics.
-func New(namespace string, db database.Database, registerer prometheus.Registerer) (*Database, error) {
-	readDuration := prometheus.NewHistogram(prometheus.HistogramOpts{
-		Namespace: namespace,
-		Name:      "db_read_duration",
-		Help:      "Time spent reading from the database",
-		Buckets:   prometheus.ExponentialBuckets(0.0001, 2, 10),
-	})
-	writeDuration := prometheus.NewHistogram(prometheus.HistogramOpts{
-		Namespace: namespace,
-		Name:      "db_write_duration",
-		Help:      "Time spent writing to the database",
-		Buckets:   prometheus.ExponentialBuckets(0.0001, 2, 10),
-	})
-	readSize := prometheus.NewHistogram(prometheus.HistogramOpts{
-		Namespace: namespace,
-		Name:      "db_read_size",
-		Help:      "Size of values read from the database",
-		Buckets:   prometheus.ExponentialBuckets(1, 2, 20),
-	})
-	writeSize := prometheus.NewHistogram(prometheus.HistogramOpts{
-		Namespace: namespace,
-		Name:      "db_write_size",
-		Help:      "Size of values written to the database",
-		Buckets:   prometheus.ExponentialBuckets(1, 2, 20),
-	})
-	readCount := prometheus.NewCounter(prometheus.CounterOpts{
-		Namespace: namespace,
-		Name:      "db_read_count",
-		Help:      "Number of database reads",
-	})
-	writeCount := prometheus.NewCounter(prometheus.CounterOpts{
-		Namespace: namespace,
-		Name:      "db_write_count",
-		Help:      "Number of database writes",
-	})
-	deleteCount := prometheus.NewCounter(prometheus.CounterOpts{
-		Namespace: namespace,
-		Name:      "db_delete_count",
-		Help:      "Number of database deletes",
-	})
-
-	if registerer != nil {
-		if err := registerer.Register(readDuration); err != nil {
-			return nil, err
-		}
-		if err := registerer.Register(writeDuration); err != nil {
-			return nil, err
-		}
-		if err := registerer.Register(readSize); err != nil {
-			return nil, err
-		}
-		if err := registerer.Register(writeSize); err != nil {
-			return nil, err
-		}
-		if err := registerer.Register(readCount); err != nil {
-			return nil, err
-		}
-		if err := registerer.Register(writeCount); err != nil {
-			return nil, err
-		}
-		if err := registerer.Register(deleteCount); err != nil {
-			return nil, err
-		}
+func New(namespace string, db database.Database, registerer metric.Registerer) (*Database, error) {
+	var metrics metric.Metrics
+	if reg, ok := registerer.(metric.Registry); ok {
+		metrics = metric.NewWithRegistry(namespace, reg)
+	} else {
+		metrics = metric.New(namespace)
 	}
+
+	readDuration := metrics.NewHistogram("db_read_duration", "Time spent reading from the database", exponentialBuckets(0.0001, 2, 10))
+	writeDuration := metrics.NewHistogram("db_write_duration", "Time spent writing to the database", exponentialBuckets(0.0001, 2, 10))
+	readSize := metrics.NewHistogram("db_read_size", "Size of values read from the database", exponentialBuckets(1, 2, 20))
+	writeSize := metrics.NewHistogram("db_write_size", "Size of values written to the database", exponentialBuckets(1, 2, 20))
+	readCount := metrics.NewCounter("db_read_count", "Number of database reads")
+	writeCount := metrics.NewCounter("db_write_count", "Number of database writes")
+	deleteCount := metrics.NewCounter("db_delete_count", "Number of database deletes")
 
 	return &Database{
 		db:            db,
@@ -100,6 +51,19 @@ func New(namespace string, db database.Database, registerer prometheus.Registere
 		writeCount:    writeCount,
 		deleteCount:   deleteCount,
 	}, nil
+}
+
+func exponentialBuckets(start, factor float64, count int) []float64 {
+	if count <= 0 {
+		return nil
+	}
+	buckets := make([]float64, count)
+	current := start
+	for i := 0; i < count; i++ {
+		buckets[i] = current
+		current *= factor
+	}
+	return buckets
 }
 
 // Close implements the database.Database interface.
@@ -197,10 +161,10 @@ func (mdb *Database) Sync() error {
 type batch struct {
 	database.Batch
 
-	writeDuration prometheus.Histogram
-	writeSize     prometheus.Histogram
-	writeCount    prometheus.Counter
-	deleteCount   prometheus.Counter
+	writeDuration metric.Histogram
+	writeSize     metric.Histogram
+	writeCount    metric.Counter
+	deleteCount   metric.Counter
 
 	size int
 }

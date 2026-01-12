@@ -8,6 +8,7 @@ package hookdb
 import (
 	"bytes"
 	"context"
+	"io"
 	"sync"
 
 	"github.com/luxfi/database"
@@ -203,6 +204,14 @@ func (db *Database) Close() error {
 
 func (db *Database) HealthCheck(ctx context.Context) (interface{}, error) {
 	return db.db.HealthCheck(ctx)
+}
+
+func (db *Database) Backup(w io.Writer, since uint64) (uint64, error) {
+	return db.db.Backup(w, since)
+}
+
+func (db *Database) Load(r io.Reader) error {
+	return db.db.Load(r)
 }
 
 // batch wraps a database batch to track writes

@@ -17,11 +17,10 @@ import (
 	"github.com/luxfi/database/prefixdb"
 	"github.com/luxfi/database/versiondb"
 	"github.com/luxfi/metric"
-	"github.com/prometheus/client_golang/prometheus"
 )
 
 // DatabaseCreator is a function that creates a database
-type DatabaseCreator func(path string, config *Config, registerer prometheus.Registerer) (db.Database, error)
+type DatabaseCreator func(path string, config *Config, registerer metric.Registerer) (db.Database, error)
 
 var (
 	creatorsMu sync.RWMutex
@@ -37,7 +36,7 @@ func RegisterDatabaseType(name string, creator DatabaseCreator) {
 
 func init() {
 	// Register badgerdb as default
-	RegisterDatabaseType("badgerdb", func(path string, config *Config, registerer prometheus.Registerer) (db.Database, error) {
+	RegisterDatabaseType("badgerdb", func(path string, config *Config, registerer metric.Registerer) (db.Database, error) {
 		return badgerdb.New(path, nil, config.Namespace, registerer)
 	})
 }
@@ -45,11 +44,11 @@ func init() {
 // Manager is a database manager that can create new database instances.
 type Manager struct {
 	baseDir    string
-	registerer prometheus.Registerer
+	registerer metric.Registerer
 }
 
 // NewManager creates a new database manager.
-func NewManager(baseDir string, registerer prometheus.Registerer) *Manager {
+func NewManager(baseDir string, registerer metric.Registerer) *Manager {
 	return &Manager{
 		baseDir:    baseDir,
 		registerer: registerer,
@@ -73,7 +72,7 @@ type Config struct {
 	// HandleCap is the maximum number of open file handles
 	HandleCap int
 
-	// EnableMetrics enables prometheus metrics
+	// EnableMetrics enables metrics
 	EnableMetrics bool
 
 	// EnableVersioning enables database versioning

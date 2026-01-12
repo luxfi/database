@@ -16,8 +16,8 @@ import (
 	badger "github.com/dgraph-io/badger/v4"
 	"github.com/dgraph-io/badger/v4/options"
 	"github.com/luxfi/database"
-	"github.com/luxfi/log"
-	"github.com/prometheus/client_golang/prometheus"
+	log "github.com/luxfi/log"
+	"github.com/luxfi/metric"
 )
 
 var (
@@ -36,7 +36,7 @@ type Database struct {
 }
 
 // New returns a new badgerdb-backed database
-func New(file string, configBytes []byte, namespace string, metrics prometheus.Registerer) (*Database, error) {
+func New(file string, configBytes []byte, namespace string, metrics metric.Registerer) (*Database, error) {
 	// BadgerDB requires a valid directory path
 	if file == "" {
 		return nil, errors.New("badgerdb: database path required")

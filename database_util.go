@@ -1,4 +1,4 @@
-// Package database provides enhanced database utilities with VictoriaMetrics-style optimizations
+// Package database provides enhanced database utilities with optimized internals.
 package database
 
 import (
@@ -17,41 +17,37 @@ import (
 
 // BadgerDBWithCache wraps BadgerDB with caching and compression optimizations
 type BadgerDBWithCache struct {
-	db              Database
-	cache           *cache.DualMapCache[string, []byte]
-	compressor      *compress.ZstdCompressor
+	db                Database
+	cache             *cache.DualMapCache[string, []byte]
+	compressor        *compress.ZstdCompressor
 	concurrentLimiter *concurrent.ConcurrencyLimiter
-	readCounter     *metric.OptimizedCounter
-	writeCounter    *metric.OptimizedCounter
-	hitRatioGauge   *metric.OptimizedGauge
-	cacheHits       int64
-	cacheMisses     int64
-	cacheMu         sync.RWMutex
+	readCounter       metric.Counter
+	writeCounter      metric.Counter
+	hitRatioGauge     metric.Gauge
+	cacheHits         int64
+	cacheMisses       int64
+	cacheMu           sync.RWMutex
 }
 
 // NewBadgerDBWithCache creates a new BadgerDB wrapper with caching and compression
-func NewBadgerDBWithCache(db Database, cacheSize int, compressionLevel zstd.EncoderLevel, maxConcurrency int, reg *metric.MetricsRegistry) (*BadgerDBWithCache, error) {
-	compressor, err := compress.NewZstdCompressor(compressionLevel, reg)
+func NewBadgerDBWithCache(db Database, cacheSize int, compressionLevel zstd.EncoderLevel, maxDecompressedSize int64, maxConcurrency int, reg metric.Registry) (*BadgerDBWithCache, error) {
+	compressor, err := compress.NewZstdCompressorWithLevel(maxDecompressedSize, compressionLevel)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create compressor: %w", err)
 	}
 
 	bdb := &BadgerDBWithCache{
-		db:              db,
-		cache:           cache.NewDualMapCache[string, []byte](reg),
-		compressor:      compressor,
+		db:                db,
+		cache:             cache.NewDualMapCache[string, []byte](reg),
+		compressor:        compressor,
 		concurrentLimiter: concurrent.NewConcurrencyLimiter(maxConcurrency, "badger_db", reg),
 	}
 
 	// Initialize metrics
 	if reg != nil {
-		bdb.readCounter = metric.NewOptimizedCounter("badger_db_reads_total", "Total number of database reads")
-		bdb.writeCounter = metric.NewOptimizedCounter("badger_db_writes_total", "Total number of database writes")
-		bdb.hitRatioGauge = metric.NewOptimizedGauge("badger_db_cache_hit_ratio", "Cache hit ratio for database operations")
-
-		reg.RegisterCounter("badger_db_reads", bdb.readCounter)
-		reg.RegisterCounter("badger_db_writes", bdb.writeCounter)
-		reg.RegisterGauge("badger_db_cache_hit_ratio", bdb.hitRatioGauge)
+		bdb.readCounter = reg.NewCounter("badger_db_reads_total", "Total number of database reads")
+		bdb.writeCounter = reg.NewCounter("badger_db_writes_total", "Total number of database writes")
+		bdb.hitRatioGauge = reg.NewGauge("badger_db_cache_hit_ratio", "Cache hit ratio for database operations")
 	}
 
 	// Start periodic cache migration
@@ -210,14 +206,14 @@ func (bdb *BadgerDBWithCache) Delete(key []byte) error {
 
 // BatchedDatabase provides batched operations with optimizations
 type BatchedDatabase struct {
-	db              Database
-	batchSize       int
-	batchTimeout    time.Duration
-	pendingOps      []*Operation
-	pendingMu       sync.Mutex
-	flushTimer      *time.Timer
-	batchCounter    *metric.OptimizedCounter
-	batchSizeGauge  *metric.OptimizedGauge
+	db             Database
+	batchSize      int
+	batchTimeout   time.Duration
+	pendingOps     []*Operation
+	pendingMu      sync.Mutex
+	flushTimer     *time.Timer
+	batchCounter   metric.Counter
+	batchSizeGauge metric.Gauge
 }
 
 // Operation represents a database operation
@@ -236,7 +232,7 @@ const (
 )
 
 // NewBatchedDatabase creates a new batched database wrapper
-func NewBatchedDatabase(db Database, batchSize int, batchTimeout time.Duration, reg *metric.MetricsRegistry) *BatchedDatabase {
+func NewBatchedDatabase(db Database, batchSize int, batchTimeout time.Duration, reg metric.Registry) *BatchedDatabase {
 	batchedDB := &BatchedDatabase{
 		db:           db,
 		batchSize:    batchSize,
@@ -246,11 +242,8 @@ func NewBatchedDatabase(db Database, batchSize int, batchTimeout time.Duration, 
 
 	// Initialize metrics
 	if reg != nil {
-		batchedDB.batchCounter = metric.NewOptimizedCounter("database_batches_total", "Total number of batches processed")
-		batchedDB.batchSizeGauge = metric.NewOptimizedGauge("database_batch_size_current", "Current size of batch being processed")
-
-		reg.RegisterCounter("database_batches", batchedDB.batchCounter)
-		reg.RegisterGauge("database_batch_size", batchedDB.batchSizeGauge)
+		batchedDB.batchCounter = reg.NewCounter("database_batches_total", "Total number of batches processed")
+		batchedDB.batchSizeGauge = reg.NewGauge("database_batch_size_current", "Current size of batch being processed")
 	}
 
 	return batchedDB
@@ -395,18 +388,18 @@ func (b *BatchedDatabase) Close() error {
 
 // RangeIterator provides optimized range iteration
 type RangeIterator struct {
-	db       Database
-	start    []byte
-	end      []byte
-	limit    int
-	reverse  bool
-	iter     Iterator
-	metrics  *metric.MetricsRegistry
-	count    int
+	db      Database
+	start   []byte
+	end     []byte
+	limit   int
+	reverse bool
+	iter    Iterator
+	metrics metric.Registry
+	count   int
 }
 
 // NewRangeIterator creates a new range iterator
-func NewRangeIterator(db Database, start, end []byte, limit int, reverse bool, reg *metric.MetricsRegistry) *RangeIterator {
+func NewRangeIterator(db Database, start, end []byte, limit int, reverse bool, reg metric.Registry) *RangeIterator {
 	return &RangeIterator{
 		db:      db,
 		start:   start,
