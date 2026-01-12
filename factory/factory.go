@@ -12,9 +12,8 @@ import (
 	"github.com/luxfi/database/memdb"
 	"github.com/luxfi/database/meterdb"
 	"github.com/luxfi/database/versiondb"
-	"github.com/luxfi/log"
+	log "github.com/luxfi/log"
 	"github.com/luxfi/metric"
-	"github.com/prometheus/client_golang/prometheus"
 )
 
 // DatabaseFactory is a function that creates a database
@@ -22,7 +21,7 @@ type DatabaseFactory func(
 	dbPath string,
 	config []byte,
 	logger log.Logger,
-	registerer prometheus.Registerer,
+	registerer metric.Registerer,
 	metricsPrefix string,
 	readOnly bool,
 ) (database.Database, error)
@@ -57,7 +56,7 @@ func init() {
 		dbPath string,
 		config []byte,
 		logger log.Logger,
-		registerer prometheus.Registerer,
+		registerer metric.Registerer,
 		metricsPrefix string,
 		readOnly bool,
 	) (database.Database, error) {
@@ -71,7 +70,7 @@ func New(
 	dbPath string,
 	readOnly bool,
 	config []byte,
-	gatherer interface{}, // Can be prometheus.Gatherer or metric.MultiGatherer
+	gatherer interface{}, // Can be metric.Gatherer or metric.MultiGatherer
 	logger log.Logger,
 	metricsPrefix string,
 	meterDBRegName string,
@@ -81,19 +80,18 @@ func New(
 
 	// Try to create a metric.Metrics from the gatherer
 	var metricsInstance metric.Metrics
-	var registerer prometheus.Registerer
+	var registerer metric.Registerer
 
 	// Check if it's already metric.Metrics
 	if m, ok := gatherer.(metric.Metrics); ok {
 		metricsInstance = m
-	} else if reg, ok := gatherer.(prometheus.Registerer); ok {
-		// Legacy support for prometheus.Registerer
+	} else if reg, ok := gatherer.(metric.Registerer); ok {
 		registerer = reg
 	} else if multiGatherer, ok := gatherer.(interface {
-		Register(string, prometheus.Gatherer) error
+		Register(string, metric.Gatherer) error
 	}); ok {
 		// Create a registry and register it with the MultiGatherer
-		reg := prometheus.NewRegistry()
+		reg := metric.NewRegistry()
 		if err := multiGatherer.Register(metricsPrefix, reg); err != nil {
 			return nil, fmt.Errorf("couldn't register %q metrics: %w", metricsPrefix, err)
 		}
@@ -133,11 +131,9 @@ func New(
 		}
 		return meterDB, nil
 	} else if registerer != nil {
-		// Create metric.Metrics from prometheus registerer for backward compatibility
-		if reg, ok := registerer.(*prometheus.Registry); ok {
-			metricsInstance = metric.NewPrometheusMetrics(metricsPrefix, reg)
+		if reg, ok := registerer.(metric.Registry); ok {
+			metricsInstance = metric.NewWithRegistry(metricsPrefix, reg)
 		} else {
-			// Create new registry if it's not a *prometheus.Registry
 			metricsInstance = metric.New(metricsPrefix)
 		}
 		meterDB, err := meterdb.New(metricsInstance, db)

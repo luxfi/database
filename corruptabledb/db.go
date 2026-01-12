@@ -10,7 +10,7 @@ import (
 	"sync"
 
 	"github.com/luxfi/database"
-	"github.com/luxfi/log"
+	log "github.com/luxfi/log"
 )
 
 var (

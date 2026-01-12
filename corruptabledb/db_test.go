@@ -15,7 +15,7 @@ import (
 	"github.com/luxfi/database/databasemock"
 	"github.com/luxfi/database/dbtest"
 	"github.com/luxfi/database/memdb"
-	"github.com/luxfi/log"
+	log "github.com/luxfi/log"
 )
 
 var errTest = errors.New("non-nil error")

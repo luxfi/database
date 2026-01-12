@@ -6,9 +6,9 @@ package manager
 import (
 	"github.com/luxfi/database"
 	"github.com/luxfi/database/badgerdb"
-	"github.com/prometheus/client_golang/prometheus"
+	"github.com/luxfi/metric"
 )
 
-func newBadgerDB(path string, configBytes []byte, namespace string, metrics prometheus.Registerer) (database.Database, error) {
+func newBadgerDB(path string, configBytes []byte, namespace string, metrics metric.Registerer) (database.Database, error) {
 	return badgerdb.New(path, configBytes, namespace, metrics)
 }

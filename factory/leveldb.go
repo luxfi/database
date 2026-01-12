@@ -8,8 +8,8 @@ package factory
 import (
 	"github.com/luxfi/database"
 	"github.com/luxfi/database/leveldb"
-	"github.com/luxfi/log"
-	"github.com/prometheus/client_golang/prometheus"
+	log "github.com/luxfi/log"
+	"github.com/luxfi/metric"
 )
 
 func init() {
@@ -20,7 +20,7 @@ func newLevelDB(
 	dbPath string,
 	config []byte,
 	logger log.Logger,
-	registerer prometheus.Registerer,
+	registerer metric.Registerer,
 	metricsPrefix string,
 	readOnly bool,
 ) (database.Database, error) {

@@ -15,7 +15,7 @@ import (
 	"github.com/cockroachdb/pebble"
 	"github.com/cockroachdb/pebble/bloom"
 	database "github.com/luxfi/database"
-	"github.com/prometheus/client_golang/prometheus"
+	"github.com/luxfi/metric"
 )
 
 const (
@@ -37,18 +37,18 @@ type Database struct {
 	writeOptions  *pebble.WriteOptions
 
 	// Metrics
-	compTimeMeter      prometheus.Summary
-	compReadMeter      prometheus.Counter
-	compWriteMeter     prometheus.Counter
-	writeDelayNMeter   prometheus.Summary
-	writeDelayMeter    prometheus.Summary
-	diskSizeGauge      prometheus.Gauge
-	diskReadMeter      prometheus.Counter
-	diskWriteMeter     prometheus.Counter
-	memCompGauge       prometheus.Gauge
-	level0CompGauge    prometheus.Gauge
-	nonlevel0CompGauge prometheus.Gauge
-	seekCompGauge      prometheus.Gauge
+	compTimeMeter      metric.Summary
+	compReadMeter      metric.Counter
+	compWriteMeter     metric.Counter
+	writeDelayNMeter   metric.Summary
+	writeDelayMeter    metric.Summary
+	diskSizeGauge      metric.Gauge
+	diskReadMeter      metric.Counter
+	diskWriteMeter     metric.Counter
+	memCompGauge       metric.Gauge
+	level0CompGauge    metric.Gauge
+	nonlevel0CompGauge metric.Gauge
+	seekCompGauge      metric.Gauge
 }
 
 // New returns a new PebbleDB database.
@@ -96,37 +96,37 @@ func New(path string, cacheSize int, handles int, namespace string, readonly boo
 
 	// Configure metrics if namespace is provided
 	if namespace != "" {
-		database.compTimeMeter = prometheus.NewSummary(prometheus.SummaryOpts{
+		database.compTimeMeter = metric.NewSummary(metric.SummaryOpts{
 			Namespace: namespace,
 			Subsystem: "pebbledb",
 			Name:      "compact_time",
 			Help:      "Time spent in compaction",
 		})
-		database.compReadMeter = prometheus.NewCounter(prometheus.CounterOpts{
+		database.compReadMeter = metric.NewCounter(metric.CounterOpts{
 			Namespace: namespace,
 			Subsystem: "pebbledb",
 			Name:      "compact_read",
 			Help:      "Bytes read during compaction",
 		})
-		database.compWriteMeter = prometheus.NewCounter(prometheus.CounterOpts{
+		database.compWriteMeter = metric.NewCounter(metric.CounterOpts{
 			Namespace: namespace,
 			Subsystem: "pebbledb",
 			Name:      "compact_write",
 			Help:      "Bytes written during compaction",
 		})
-		database.diskSizeGauge = prometheus.NewGauge(prometheus.GaugeOpts{
+		database.diskSizeGauge = metric.NewGauge(metric.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: "pebbledb",
 			Name:      "disk_size",
 			Help:      "Size of the database on disk",
 		})
-		database.diskReadMeter = prometheus.NewCounter(prometheus.CounterOpts{
+		database.diskReadMeter = metric.NewCounter(metric.CounterOpts{
 			Namespace: namespace,
 			Subsystem: "pebbledb",
 			Name:      "disk_read",
 			Help:      "Bytes read from disk",
 		})
-		database.diskWriteMeter = prometheus.NewCounter(prometheus.CounterOpts{
+		database.diskWriteMeter = metric.NewCounter(metric.CounterOpts{
 			Namespace: namespace,
 			Subsystem: "pebbledb",
 			Name:      "disk_write",

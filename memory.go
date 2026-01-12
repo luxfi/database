@@ -1,4 +1,4 @@
-// Package database provides memory management utilities inspired by VictoriaMetrics
+// Package database provides memory management utilities.
 package database
 
 import (
@@ -10,22 +10,22 @@ import (
 	"github.com/luxfi/metric"
 )
 
-// MemoryManager provides memory management similar to VictoriaMetrics
+// MemoryManager provides memory management utilities.
 type MemoryManager struct {
-	allowedMemory   int64 // Total allowed memory in bytes
-	usedMemory      int64 // Currently used memory
-	maxMemory       uint64 // Max memory based on system
-	allowedPercent  float64
-	memoryMu        sync.RWMutex
-	reserveChan     chan struct{}
-	memoryReserve   int64 // Amount of memory reserved for critical operations
-	usageGauge      *metric.OptimizedGauge
-	availableGauge  *metric.OptimizedGauge
-	remainingGauge  *metric.OptimizedGauge
+	allowedMemory  int64  // Total allowed memory in bytes
+	usedMemory     int64  // Currently used memory
+	maxMemory      uint64 // Max memory based on system
+	allowedPercent float64
+	memoryMu       sync.RWMutex
+	reserveChan    chan struct{}
+	memoryReserve  int64 // Amount of memory reserved for critical operations
+	usageGauge     metric.Gauge
+	availableGauge metric.Gauge
+	remainingGauge metric.Gauge
 }
 
 // NewMemoryManager creates a new memory manager with the specified percentage of system memory
-func NewMemoryManager(allowedPercent float64, reg *metric.MetricsRegistry) (*MemoryManager, error) {
+func NewMemoryManager(allowedPercent float64, reg metric.Registry) (*MemoryManager, error) {
 	if allowedPercent <= 0 || allowedPercent > 100 {
 		return nil, fmt.Errorf("allowedPercent must be between 0 and 100, got %f", allowedPercent)
 	}
@@ -46,13 +46,9 @@ func NewMemoryManager(allowedPercent float64, reg *metric.MetricsRegistry) (*Mem
 
 	// Initialize metrics
 	if reg != nil {
-		mm.usageGauge = metric.NewOptimizedGauge("memory_manager_used_bytes", "Amount of memory currently used by the memory manager")
-		mm.availableGauge = metric.NewOptimizedGauge("memory_manager_available_bytes", "Amount of memory available for allocation")
-		mm.remainingGauge = metric.NewOptimizedGauge("memory_manager_remaining_bytes", "Amount of memory remaining after current usage")
-
-		reg.RegisterGauge("memory_used", mm.usageGauge)
-		reg.RegisterGauge("memory_available", mm.availableGauge)
-		reg.RegisterGauge("memory_remaining", mm.remainingGauge)
+		mm.usageGauge = reg.NewGauge("memory_manager_used_bytes", "Amount of memory currently used by the memory manager")
+		mm.availableGauge = reg.NewGauge("memory_manager_available_bytes", "Amount of memory available for allocation")
+		mm.remainingGauge = reg.NewGauge("memory_manager_remaining_bytes", "Amount of memory remaining after current usage")
 	}
 
 	// Initialize reserve channel
@@ -184,21 +180,21 @@ type MemoryStats struct {
 	Percent   float64 // Percentage of system memory allowed
 }
 
-// ObjectPool provides an optimized object pool similar to VictoriaMetrics
+// ObjectPool provides an optimized object pool.
 type ObjectPool[T any] struct {
 	pool *sync.Pool
 	size int64 // Approximate size of objects in the pool
 	mm   *MemoryManager
 	// Metrics
-	acquireCounter *metric.OptimizedCounter
-	releaseCounter *metric.OptimizedCounter
-	poolSizeGauge  *metric.OptimizedGauge
+	acquireCounter metric.Counter
+	releaseCounter metric.Counter
+	poolSizeGauge  metric.Gauge
 	poolSize       int64
 	poolMu         sync.RWMutex
 }
 
 // NewObjectPool creates a new object pool with memory management
-func NewObjectPool[T any](newFn func() T, size int64, mm *MemoryManager, reg *metric.MetricsRegistry) *ObjectPool[T] {
+func NewObjectPool[T any](newFn func() T, size int64, mm *MemoryManager, reg metric.Registry) *ObjectPool[T] {
 	op := &ObjectPool[T]{
 		pool: &sync.Pool{
 			New: func() interface{} { return newFn() },
@@ -209,13 +205,9 @@ func NewObjectPool[T any](newFn func() T, size int64, mm *MemoryManager, reg *me
 
 	// Initialize metrics
 	if reg != nil {
-		op.acquireCounter = metric.NewOptimizedCounter("object_pool_acquire_total", "Total number of object acquisitions from pool")
-		op.releaseCounter = metric.NewOptimizedCounter("object_pool_release_total", "Total number of object releases to pool")
-		op.poolSizeGauge = metric.NewOptimizedGauge("object_pool_size", "Current size of object pool")
-
-		reg.RegisterCounter("object_pool_acquire", op.acquireCounter)
-		reg.RegisterCounter("object_pool_release", op.releaseCounter)
-		reg.RegisterGauge("object_pool_size", op.poolSizeGauge)
+		op.acquireCounter = reg.NewCounter("object_pool_acquire_total", "Total number of object acquisitions from pool")
+		op.releaseCounter = reg.NewCounter("object_pool_release_total", "Total number of object releases to pool")
+		op.poolSizeGauge = reg.NewGauge("object_pool_size", "Current size of object pool")
 	}
 
 	return op
@@ -285,11 +277,11 @@ func (op *ObjectPool[T]) Clear() {
 	// Clear the underlying pool
 	oldPool := op.pool
 	op.pool = &sync.Pool{New: oldPool.New}
-	
+
 	op.poolMu.Lock()
 	op.poolSize = 0
 	op.poolMu.Unlock()
-	
+
 	if op.poolSizeGauge != nil {
 		op.poolSizeGauge.Set(0)
 	}

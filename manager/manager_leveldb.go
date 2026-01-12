@@ -8,11 +8,11 @@ package manager
 import (
 	db "github.com/luxfi/database"
 	"github.com/luxfi/database/leveldb"
-	"github.com/prometheus/client_golang/prometheus"
+	"github.com/luxfi/metric"
 )
 
 func init() {
-	RegisterDatabaseType("leveldb", func(path string, config *Config, registerer prometheus.Registerer) (db.Database, error) {
+	RegisterDatabaseType("leveldb", func(path string, config *Config, registerer metric.Registerer) (db.Database, error) {
 		return leveldb.New(path, config.CacheSize, config.CacheSize/2, config.HandleCap)
 	})
 }

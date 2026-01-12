@@ -62,7 +62,6 @@ type leveldbMetrics struct {
 }
 
 func newMetrics(reg metric.Metrics) (leveldbMetrics, error) {
-	// Convert to using luxfi metrics instead of prometheus directly
 	m := leveldbMetrics{
 		writesDelayedCount: reg.NewCounter(
 			"writes_delayed",
