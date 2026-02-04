@@ -27,8 +27,8 @@ type DatabaseFactory func(
 ) (database.Database, error)
 
 var (
-	factoryMu  sync.RWMutex
-	factories  = make(map[string]DatabaseFactory)
+	factoryMu sync.RWMutex
+	factories = make(map[string]DatabaseFactory)
 )
 
 // RegisterDatabase registers a database factory for a given name

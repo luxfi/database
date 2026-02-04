@@ -175,26 +175,26 @@ func (n *IndexerNotifier) Close() {
 // BlockPrefixes returns common block-related key prefixes to watch
 func BlockPrefixes() [][]byte {
 	return [][]byte{
-		[]byte("b"),          // blocks
-		[]byte("H"),          // block headers
-		[]byte("h"),          // block hashes
-		[]byte("n"),          // block numbers
-		[]byte("l"),          // transaction lookups
-		[]byte("r"),          // receipts
+		[]byte("b"), // blocks
+		[]byte("H"), // block headers
+		[]byte("h"), // block hashes
+		[]byte("n"), // block numbers
+		[]byte("l"), // transaction lookups
+		[]byte("r"), // receipts
 	}
 }
 
 // EVMPrefixes returns EVM-specific key prefixes to watch
 func EVMPrefixes() [][]byte {
 	return [][]byte{
-		[]byte("B"),          // block body
-		[]byte("H"),          // block header
-		[]byte("h"),          // header hash
-		[]byte("n"),          // header number
-		[]byte("b"),          // block hash -> number
-		[]byte("l"),          // tx lookup
-		[]byte("r"),          // receipts
-		[]byte("LastBlock"),  // last block
+		[]byte("B"),            // block body
+		[]byte("H"),            // block header
+		[]byte("h"),            // header hash
+		[]byte("n"),            // header number
+		[]byte("b"),            // block hash -> number
+		[]byte("l"),            // tx lookup
+		[]byte("r"),            // receipts
+		[]byte("LastBlock"),    // last block
 		[]byte("LastAccepted"), // last accepted
 	}
 }
