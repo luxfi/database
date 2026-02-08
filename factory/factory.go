@@ -55,7 +55,7 @@ func init() {
 	// Other databases (pebbledb, leveldb) available with build tags:
 	//   -tags=pebbledb  for PebbleDB
 	//   -tags=leveldb   for LevelDB
-	RegisterDatabase(zapdb.Name, func(
+	factory := func(
 		dbPath string,
 		config []byte,
 		logger log.Logger,
@@ -64,7 +64,10 @@ func init() {
 		readOnly bool,
 	) (database.Database, error) {
 		return zapdb.New(dbPath, config, zapdb.Name, registerer)
-	})
+	}
+	RegisterDatabase(zapdb.Name, factory)
+	// Register under legacy name for backwards compatibility
+	RegisterDatabase("badgerdb", factory)
 }
 
 // New creates a new database with the provided configuration
