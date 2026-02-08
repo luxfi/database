@@ -5,10 +5,10 @@ package manager
 
 import (
 	"github.com/luxfi/database"
-	"github.com/luxfi/database/badgerdb"
+	"github.com/luxfi/database/zapdb"
 	"github.com/luxfi/metric"
 )
 
 func newBadgerDB(path string, configBytes []byte, namespace string, metrics metric.Registerer) (database.Database, error) {
-	return badgerdb.New(path, configBytes, namespace, metrics)
+	return zapdb.New(path, configBytes, namespace, metrics)
 }

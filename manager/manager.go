@@ -11,7 +11,7 @@ import (
 	"sync"
 
 	db "github.com/luxfi/database"
-	"github.com/luxfi/database/badgerdb"
+	"github.com/luxfi/database/zapdb"
 	"github.com/luxfi/database/memdb"
 	"github.com/luxfi/database/meterdb"
 	"github.com/luxfi/database/prefixdb"
@@ -37,7 +37,7 @@ func RegisterDatabaseType(name string, creator DatabaseCreator) {
 func init() {
 	// Register badgerdb as default
 	RegisterDatabaseType("badgerdb", func(path string, config *Config, registerer metric.Registerer) (db.Database, error) {
-		return badgerdb.New(path, nil, config.Namespace, registerer)
+		return zapdb.New(path, nil, config.Namespace, registerer)
 	})
 }
 

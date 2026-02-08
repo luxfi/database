@@ -3,7 +3,7 @@
 
 //go:build test
 
-package badgerdb
+package zapdb
 
 import (
 	"fmt"

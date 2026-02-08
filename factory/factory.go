@@ -8,7 +8,7 @@ import (
 	"sync"
 
 	"github.com/luxfi/database"
-	"github.com/luxfi/database/badgerdb"
+	"github.com/luxfi/database/zapdb"
 	"github.com/luxfi/database/memdb"
 	"github.com/luxfi/database/meterdb"
 	"github.com/luxfi/database/versiondb"
@@ -43,7 +43,7 @@ func AvailableDatabases() []string {
 	factoryMu.RLock()
 	defer factoryMu.RUnlock()
 	names := make([]string, 0, len(factories)+2)
-	names = append(names, badgerdb.Name, memdb.Name)
+	names = append(names, zapdb.Name, memdb.Name)
 	for name := range factories {
 		names = append(names, name)
 	}
@@ -52,7 +52,7 @@ func AvailableDatabases() []string {
 
 func init() {
 	// badgerdb is always available (default)
-	RegisterDatabase(badgerdb.Name, func(
+	RegisterDatabase(zapdb.Name, func(
 		dbPath string,
 		config []byte,
 		logger log.Logger,
@@ -60,7 +60,7 @@ func init() {
 		metricsPrefix string,
 		readOnly bool,
 	) (database.Database, error) {
-		return badgerdb.New(dbPath, config, "badgerdb", registerer)
+		return zapdb.New(dbPath, config, "badgerdb", registerer)
 	})
 }
 
