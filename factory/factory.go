@@ -51,7 +51,10 @@ func AvailableDatabases() []string {
 }
 
 func init() {
-	// badgerdb is always available (default)
+	// zapdb is always available (default database)
+	// Other databases (pebbledb, leveldb) available with build tags:
+	//   -tags=pebbledb  for PebbleDB
+	//   -tags=leveldb   for LevelDB
 	RegisterDatabase(zapdb.Name, func(
 		dbPath string,
 		config []byte,
@@ -60,7 +63,7 @@ func init() {
 		metricsPrefix string,
 		readOnly bool,
 	) (database.Database, error) {
-		return zapdb.New(dbPath, config, "badgerdb", registerer)
+		return zapdb.New(dbPath, config, zapdb.Name, registerer)
 	})
 }
 
