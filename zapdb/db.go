@@ -1,7 +1,7 @@
 // Copyright (C) 2020-2025, Lux Industries Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 
-package badgerdb
+package zapdb
 
 import (
 	"bytes"
@@ -13,8 +13,8 @@ import (
 	"sync"
 	"time"
 
-	badger "github.com/dgraph-io/badger/v4"
-	"github.com/dgraph-io/badger/v4/options"
+	badger "github.com/luxfi/zapdb/v4"
+	"github.com/luxfi/zapdb/v4/options"
 	"github.com/luxfi/database"
 	log "github.com/luxfi/log"
 	"github.com/luxfi/metric"

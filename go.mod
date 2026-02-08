@@ -4,7 +4,6 @@ go 1.25.5
 
 require (
 	github.com/cockroachdb/pebble v1.1.5
-	github.com/dgraph-io/badger/v4 v4.9.0
 	github.com/klauspost/compress v1.18.3
 	github.com/luxfi/cache v1.2.0
 	github.com/luxfi/codec v1.1.3
@@ -16,6 +15,7 @@ require (
 	github.com/luxfi/log v1.4.1
 	github.com/luxfi/math v1.2.3
 	github.com/luxfi/metric v1.4.10
+	github.com/luxfi/zapdb/v4 v4.9.1
 	github.com/stretchr/testify v1.11.1
 	github.com/syndtr/goleveldb v1.0.1-0.20220614013038-64ee5596c38a
 	go.uber.org/mock v0.6.0
