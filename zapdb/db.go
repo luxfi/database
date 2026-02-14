@@ -13,11 +13,11 @@ import (
 	"sync"
 	"time"
 
-	badger "github.com/luxfi/zapdb/v4"
-	"github.com/luxfi/zapdb/v4/options"
 	"github.com/luxfi/database"
 	log "github.com/luxfi/log"
 	"github.com/luxfi/metric"
+	badger "github.com/luxfi/zapdb/v4"
+	"github.com/luxfi/zapdb/v4/options"
 )
 
 var (
