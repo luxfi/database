@@ -11,11 +11,11 @@ import (
 	"sync"
 
 	db "github.com/luxfi/database"
-	"github.com/luxfi/database/zapdb"
 	"github.com/luxfi/database/memdb"
 	"github.com/luxfi/database/meterdb"
 	"github.com/luxfi/database/prefixdb"
 	"github.com/luxfi/database/versiondb"
+	"github.com/luxfi/database/zapdb"
 	"github.com/luxfi/metric"
 )
 

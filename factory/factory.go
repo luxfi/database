@@ -8,10 +8,10 @@ import (
 	"sync"
 
 	"github.com/luxfi/database"
-	"github.com/luxfi/database/zapdb"
 	"github.com/luxfi/database/memdb"
 	"github.com/luxfi/database/meterdb"
 	"github.com/luxfi/database/versiondb"
+	"github.com/luxfi/database/zapdb"
 	log "github.com/luxfi/log"
 	"github.com/luxfi/metric"
 )
