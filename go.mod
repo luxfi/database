@@ -1,6 +1,6 @@
 module github.com/luxfi/database
 
-go 1.26
+go 1.26.1
 
 require (
 	github.com/cockroachdb/pebble v1.1.5
