@@ -27,18 +27,12 @@ var (
 	emptyKeyPlaceholder = []byte{0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF}
 )
 
-// Database is a badgerdb backed database with optional GPU-accelerated caching.
-// When GPUCacheConfig.GPUMemoryBudget > 0, hot data is kept in a GPU-resident
-// hash table for O(1) lookups. Reads hit GPU cache first, then fall through to
-// disk. Writes go through to both GPU cache and disk (write-through).
+// Database is a badgerdb backed database
 type Database struct {
-	dbPath   string
-	db       *badger.DB
-	gpuCache *gpuCache // nil when GPU caching is disabled
-	gpuCfg   GPUCacheConfig
-	closed   bool
-	closeMu  sync.RWMutex
-	gcStop   chan struct{} // signals the GC goroutine to stop
+	dbPath  string
+	db      *badger.DB
+	closed  bool
+	closeMu sync.RWMutex
 }
 
 // New returns a new badgerdb-backed database
@@ -58,7 +52,7 @@ func New(file string, configBytes []byte, namespace string, metrics metric.Regis
 	}
 
 	// Performance optimizations for blockchain + Verkle tree workloads
-	opts.SyncWrites = true            // Sync writes for data integrity (blockchain MUST NOT lose writes)
+	opts.SyncWrites = true            // Sync writes for data integrity           // Async writes for better performance
 	opts.NumCompactors = 4            // More compactors for faster background compaction
 	opts.NumLevelZeroTables = 10      // More L0 tables before stalling
 	opts.NumLevelZeroTablesStall = 15 // Stall writes if L0 tables exceed this
@@ -105,122 +99,23 @@ func New(file string, configBytes []byte, namespace string, metrics metric.Regis
 		return nil, err
 	}
 
-	gcStop := make(chan struct{})
-
 	// Start garbage collection in background
 	go func() {
 		ticker := time.NewTicker(5 * time.Minute)
 		defer ticker.Stop()
-		for {
-			select {
-			case <-gcStop:
-				return
-			case <-ticker.C:
-				lsm, vlog := badgerDB.Size()
-				if vlog > 1<<30 { // If value log > 1GB, run GC
-					badgerDB.RunValueLogGC(0.5)
-				}
-				_ = lsm // Avoid unused variable
+		for range ticker.C {
+			lsm, vlog := badgerDB.Size()
+			if vlog > 1<<30 { // If value log > 1GB, run GC
+				badgerDB.RunValueLogGC(0.5)
 			}
+			_ = lsm // Avoid unused variable
 		}
 	}()
 
 	return &Database{
 		dbPath: file,
 		db:     badgerDB,
-		gcStop: gcStop,
 	}, nil
-}
-
-// NewWithGPU returns a new badgerdb-backed database with optional GPU caching.
-// When gpuCfg.GPUMemoryBudget > 0, a GPU-accelerated cache is initialized
-// that keeps hot key-value pairs in GPU memory for fast access.
-// All existing database tests pass identically with and without GPU caching.
-func NewWithGPU(file string, configBytes []byte, namespace string, metrics metric.Registerer, gpuCfg GPUCacheConfig) (*Database, error) {
-	db, err := New(file, configBytes, namespace, metrics)
-	if err != nil {
-		return nil, err
-	}
-
-	if gpuCfg.Enabled() {
-		// Apply defaults for zero-valued fields
-		if gpuCfg.InitialCapacity == 0 {
-			gpuCfg.InitialCapacity = 1 << 20
-		}
-		if gpuCfg.EvictionThreshold == 0 {
-			gpuCfg.EvictionThreshold = 0.90
-		}
-		if gpuCfg.MaxKeySize == 0 {
-			gpuCfg.MaxKeySize = 1024
-		}
-		if gpuCfg.MaxValueSize == 0 {
-			gpuCfg.MaxValueSize = 65536
-		}
-
-		db.gpuCfg = gpuCfg
-		db.gpuCache = newGPUCache(gpuCfg)
-		log.Info(fmt.Sprintf("[%s] GPU cache enabled: %d MB budget, %d slots",
-			namespace, gpuCfg.GPUMemoryBudget/(1024*1024), gpuCfg.InitialCapacity))
-	}
-
-	return db, nil
-}
-
-// GPUCacheStats returns GPU cache statistics, or nil if GPU caching is disabled.
-func (d *Database) GPUCacheStats() *gpuCacheStats {
-	if d.gpuCache == nil {
-		return nil
-	}
-	stats := d.gpuCache.stats()
-	return &stats
-}
-
-// GPUCacheEnabled returns true if GPU caching is active.
-func (d *Database) GPUCacheEnabled() bool {
-	return d.gpuCache != nil
-}
-
-// FlushGPUCache flushes all dirty GPU cache entries to disk.
-// No-op if GPU caching is disabled.
-func (d *Database) FlushGPUCache() error {
-	if d.gpuCache == nil {
-		return nil
-	}
-
-	d.closeMu.RLock()
-	defer d.closeMu.RUnlock()
-	if d.closed {
-		return database.ErrClosed
-	}
-
-	entries := d.gpuCache.extractAll()
-	for _, e := range entries {
-		if e.flags&slotDirty == 0 {
-			continue // Only flush dirty entries
-		}
-		if err := d.diskPut(e.key, e.value); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// InvalidateGPUCache clears the GPU cache without affecting disk data.
-// No-op if GPU caching is disabled.
-func (d *Database) InvalidateGPUCache() {
-	if d.gpuCache != nil {
-		d.gpuCache.invalidate()
-	}
-}
-
-// diskPut writes directly to disk, bypassing the GPU cache.
-func (d *Database) diskPut(key, value []byte) error {
-	if len(key) == 0 {
-		key = emptyKeyPlaceholder
-	}
-	return d.db.Update(func(txn *badger.Txn) error {
-		return txn.Set(key, value)
-	})
 }
 
 // Close implements the Database interface
@@ -236,19 +131,6 @@ func (d *Database) Close() error {
 		return database.ErrClosed
 	}
 	d.closed = true
-
-	// Stop the GC goroutine
-	if d.gcStop != nil {
-		close(d.gcStop)
-	}
-
-	// Flush dirty GPU cache entries to disk before closing, then clear
-	if d.gpuCache != nil {
-		d.gpuCache.flushDirty(func(key, value []byte) error {
-			return d.diskPut(key, value)
-		})
-		d.gpuCache = nil
-	}
 
 	if d.db == nil {
 		return nil
@@ -277,14 +159,6 @@ func (d *Database) Has(key []byte) (bool, error) {
 
 	if d.closed {
 		return false, database.ErrClosed
-	}
-
-	// GPU cache fast path
-	if d.gpuCache != nil && len(key) > 0 {
-		if d.gpuCache.has(key) {
-			return true, nil
-		}
-		d.gpuCache.misses.Add(1)
 	}
 
 	// Handle empty keys using placeholder
@@ -317,23 +191,14 @@ func (d *Database) Get(key []byte) ([]byte, error) {
 		return nil, database.ErrClosed
 	}
 
-	// GPU cache fast path
-	if d.gpuCache != nil && len(key) > 0 {
-		if val, ok := d.gpuCache.get(key); ok {
-			return val, nil
-		}
-		d.gpuCache.misses.Add(1)
-	}
-
 	// Handle empty keys using placeholder
-	lookupKey := key
-	if len(lookupKey) == 0 {
-		lookupKey = emptyKeyPlaceholder
+	if len(key) == 0 {
+		key = emptyKeyPlaceholder
 	}
 
 	var value []byte
 	err := d.db.View(func(txn *badger.Txn) error {
-		item, err := txn.Get(lookupKey)
+		item, err := txn.Get(key)
 		if err != nil {
 			if errors.Is(err, badger.ErrKeyNotFound) {
 				return database.ErrNotFound
@@ -343,17 +208,7 @@ func (d *Database) Get(key []byte) ([]byte, error) {
 		value, err = item.ValueCopy(nil)
 		return err
 	})
-	if err != nil {
-		return nil, err
-	}
-
-	// Promote disk hit to GPU cache
-	if d.gpuCache != nil && d.gpuCfg.PromoteOnMiss && len(key) > 0 {
-		d.gpuCache.put(key, value, false) // not dirty since disk already has it
-		d.gpuCache.promotions.Add(1)
-	}
-
-	return value, nil
+	return value, err
 }
 
 // Put implements the Database interface
@@ -366,30 +221,13 @@ func (d *Database) Put(key []byte, value []byte) error {
 	}
 
 	// Handle empty keys using placeholder
-	diskKey := key
-	if len(diskKey) == 0 {
-		diskKey = emptyKeyPlaceholder
+	if len(key) == 0 {
+		key = emptyKeyPlaceholder
 	}
 
-	// CRITICAL: Write to disk FIRST. Only update GPU cache on success.
-	// If disk write fails but GPU cache was updated, GPU-enabled nodes
-	// would return data that non-GPU nodes don't have → consensus split.
-	err := d.db.Update(func(txn *badger.Txn) error {
-		return txn.Set(diskKey, value)
+	return d.db.Update(func(txn *badger.Txn) error {
+		return txn.Set(key, value)
 	})
-	if err != nil {
-		return err
-	}
-
-	// Disk succeeded — now update GPU cache (not dirty since disk has it)
-	if d.gpuCache != nil && len(key) > 0 {
-		if d.gpuCache.loadFactor() >= d.gpuCfg.EvictionThreshold {
-			d.gpuCache.evictColdest(int(d.gpuCfg.InitialCapacity / 10))
-		}
-		d.gpuCache.put(key, value, false)
-	}
-
-	return nil
 }
 
 // Delete implements the Database interface
@@ -402,25 +240,13 @@ func (d *Database) Delete(key []byte) error {
 	}
 
 	// Handle empty keys using placeholder
-	diskKey := key
-	if len(diskKey) == 0 {
-		diskKey = emptyKeyPlaceholder
+	if len(key) == 0 {
+		key = emptyKeyPlaceholder
 	}
 
-	// Disk first, GPU cache after (same ordering as Put for consistency)
-	err := d.db.Update(func(txn *badger.Txn) error {
-		return txn.Delete(diskKey)
+	return d.db.Update(func(txn *badger.Txn) error {
+		return txn.Delete(key)
 	})
-	if err != nil {
-		return err
-	}
-
-	// Disk succeeded — remove from GPU cache
-	if d.gpuCache != nil && len(key) > 0 {
-		d.gpuCache.remove(key)
-	}
-
-	return nil
 }
 
 // NewBatch implements the Database interface
@@ -610,11 +436,6 @@ func (d *Database) Load(r io.Reader) error {
 		return database.ErrClosed
 	}
 
-	// Invalidate GPU cache since disk data is being replaced
-	if d.gpuCache != nil {
-		d.gpuCache.invalidate()
-	}
-
 	// 16 is a reasonable default for maxPendingWrites
 	return d.db.Load(r, 16)
 }
@@ -665,14 +486,11 @@ func (b *batch) Delete(key []byte) error {
 
 // Write implements the Batch interface
 func (b *batch) Write() error {
-	b.db.closeMu.RLock()
-	defer b.db.closeMu.RUnlock()
-
 	if b.db.closed {
 		return database.ErrClosed
 	}
 
-	err := b.db.db.Update(func(txn *badger.Txn) error {
+	return b.db.db.Update(func(txn *badger.Txn) error {
 		for _, op := range b.ops {
 			if op.delete {
 				if err := txn.Delete(op.key); err != nil {
@@ -686,34 +504,6 @@ func (b *batch) Write() error {
 		}
 		return nil
 	})
-	if err != nil {
-		return err
-	}
-
-	// Update GPU cache to match disk state.
-	// Disk write succeeded above, so GPU cache must reflect it.
-	// If a put() fails (cache full), evict and retry once. If still
-	// fails, the entry simply won't be cached — it will fall through
-	// to disk on next read, which is correct (disk is authoritative).
-	if b.db.gpuCache != nil {
-		for _, op := range b.ops {
-			// Skip empty key placeholder — GPU cache only tracks real keys
-			if bytes.Equal(op.key, emptyKeyPlaceholder) {
-				continue
-			}
-			if op.delete {
-				b.db.gpuCache.remove(op.key)
-			} else {
-				if !b.db.gpuCache.put(op.key, op.value, false) {
-					// Cache full — evict and retry once
-					b.db.gpuCache.evictColdest(256)
-					b.db.gpuCache.put(op.key, op.value, false) // best effort
-				}
-			}
-		}
-	}
-
-	return nil
 }
 
 // WriteSync implements the Batch interface
