@@ -63,18 +63,6 @@ func init() {
 		metricsPrefix string,
 		readOnly bool,
 	) (database.Database, error) {
-		// Check if GPU mode is requested via config
-		gpuCfg := zapdb.ParseGPUConfig(config)
-		if gpuCfg.Enabled() {
-			db, gpuErr := zapdb.NewWithGPU(dbPath, config, zapdb.Name, registerer, gpuCfg)
-			if gpuErr != nil {
-				log.Warn("GPU database init failed, falling back to disk-only",
-					"path", dbPath, "err", gpuErr,
-				)
-				return zapdb.New(dbPath, config, zapdb.Name, registerer)
-			}
-			return db, nil
-		}
 		return zapdb.New(dbPath, config, zapdb.Name, registerer)
 	}
 	RegisterDatabase(zapdb.Name, factory)

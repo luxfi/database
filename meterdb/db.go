@@ -104,6 +104,9 @@ type Database struct {
 	size     metric.CounterVec
 }
 
+// Unwrap returns the underlying database for interface assertions.
+func (db *Database) Unwrap() database.Database { return db.db }
+
 // New returns a new database with added metrics
 func New(
 	reg metric.Metrics,
