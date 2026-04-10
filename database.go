@@ -125,6 +125,34 @@ type Database interface {
 	Load(r io.Reader) error
 }
 
+// Replicatable is an optional interface for databases that support streaming
+// replication to remote storage (S3, etc.). The node checks for this after
+// DB creation and starts replication if REPLICATE_S3_ENDPOINT is set.
+type Replicatable interface {
+	StartReplicator(ctx context.Context) error
+}
+
+// Unwrapper is implemented by wrapper databases (meterdb, versiondb) to expose
+// the underlying database for interface assertions like Replicatable.
+type Unwrapper interface {
+	Unwrap() Database
+}
+
+// UnwrapTo extracts the innermost database that implements T.
+func UnwrapTo[T any](db Database) (T, bool) {
+	for {
+		if t, ok := db.(T); ok {
+			return t, true
+		}
+		if u, ok := db.(Unwrapper); ok {
+			db = u.Unwrap()
+			continue
+		}
+		var zero T
+		return zero, false
+	}
+}
+
 // HeightIndex provides height-based key-value storage for blockchain state.
 // Heights are stored as big-endian uint64 keys for efficient range queries.
 type HeightIndex interface {

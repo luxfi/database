@@ -1053,10 +1053,11 @@ func (n *nopBatch) Inner() database.Batch                       { return n }
 
 // StartReplicator starts encrypted streaming replication to S3 if configured.
 // Reads config from REPLICATE_* env vars. No-op if REPLICATE_S3_ENDPOINT is not set.
-func (d *Database) StartReplicator(ctx context.Context) (*badger.Replicator, error) {
+// Implements database.Replicatable.
+func (d *Database) StartReplicator(ctx context.Context) error {
 	endpoint := os.Getenv("REPLICATE_S3_ENDPOINT")
 	if endpoint == "" {
-		return nil, nil // replication not configured
+		return nil // replication not configured
 	}
 
 	bucket := os.Getenv("REPLICATE_S3_BUCKET")
@@ -1078,18 +1079,18 @@ func (d *Database) StartReplicator(ctx context.Context) (*badger.Replicator, err
 	if recipientStr := os.Getenv("REPLICATE_AGE_RECIPIENT"); recipientStr != "" {
 		r, err := age.ParseX25519Recipient(recipientStr)
 		if err != nil {
-			return nil, fmt.Errorf("parse age recipient: %w", err)
+			return fmt.Errorf("parse age recipient: %w", err)
 		}
 		cfg.AgeRecipient = r
 	}
 
 	replicator, err := badger.NewReplicator(d.db, cfg)
 	if err != nil {
-		return nil, fmt.Errorf("create replicator: %w", err)
+		return fmt.Errorf("create replicator: %w", err)
 	}
 
 	replicator.Start(ctx)
-	return replicator, nil
+	return nil
 }
 
 func envOr(key, fallback string) string {

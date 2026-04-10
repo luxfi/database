@@ -43,6 +43,9 @@ type valueDelete struct {
 	delete bool
 }
 
+// Unwrap returns the underlying database for interface assertions.
+func (db *Database) Unwrap() database.Database { return db.db }
+
 // New returns a new versioned database
 func New(db database.Database) *Database {
 	return &Database{
