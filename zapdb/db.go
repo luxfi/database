@@ -10,9 +10,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"sync"
 	"time"
 
+	"github.com/luxfi/age"
 	"github.com/luxfi/database"
 	log "github.com/luxfi/log"
 	"github.com/luxfi/metric"
@@ -1048,3 +1050,51 @@ func (n *nopBatch) Write() error                                { return n.err }
 func (n *nopBatch) Reset()                                      {}
 func (n *nopBatch) Replay(database.KeyValueWriterDeleter) error { return n.err }
 func (n *nopBatch) Inner() database.Batch                       { return n }
+
+// StartReplicator starts encrypted streaming replication to S3 if configured.
+// Reads config from REPLICATE_* env vars. No-op if REPLICATE_S3_ENDPOINT is not set.
+func (d *Database) StartReplicator(ctx context.Context) (*badger.Replicator, error) {
+	endpoint := os.Getenv("REPLICATE_S3_ENDPOINT")
+	if endpoint == "" {
+		return nil, nil // replication not configured
+	}
+
+	bucket := os.Getenv("REPLICATE_S3_BUCKET")
+	if bucket == "" {
+		bucket = "replicate"
+	}
+
+	cfg := badger.ReplicatorConfig{
+		Bucket:    bucket,
+		Endpoint:  endpoint,
+		Region:    envOr("REPLICATE_S3_REGION", "us-central1"),
+		AccessKey: os.Getenv("REPLICATE_S3_ACCESS_KEY"),
+		SecretKey: os.Getenv("REPLICATE_S3_SECRET_KEY"),
+		UseSSL:    os.Getenv("REPLICATE_S3_USE_SSL") == "true",
+		Path:      envOr("REPLICATE_S3_PATH", d.dbPath),
+	}
+
+	// Age encryption (PQ-safe via X-Wing)
+	if recipientStr := os.Getenv("REPLICATE_AGE_RECIPIENT"); recipientStr != "" {
+		r, err := age.ParseX25519Recipient(recipientStr)
+		if err != nil {
+			return nil, fmt.Errorf("parse age recipient: %w", err)
+		}
+		cfg.AgeRecipient = r
+	}
+
+	replicator, err := badger.NewReplicator(d.db, cfg)
+	if err != nil {
+		return nil, fmt.Errorf("create replicator: %w", err)
+	}
+
+	replicator.Start(ctx)
+	return replicator, nil
+}
+
+func envOr(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return fallback
+}
