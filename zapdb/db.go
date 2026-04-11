@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -18,8 +19,8 @@ import (
 	"github.com/luxfi/database"
 	log "github.com/luxfi/log"
 	"github.com/luxfi/metric"
-	badger "github.com/luxfi/zapdb/v4"
-	"github.com/luxfi/zapdb/v4/options"
+	badger "github.com/luxfi/zapdb"
+	"github.com/luxfi/zapdb/options"
 )
 
 var (
@@ -1075,13 +1076,15 @@ func (d *Database) StartReplicator(ctx context.Context) error {
 		Path:      envOr("REPLICATE_S3_PATH", d.dbPath),
 	}
 
-	// Age encryption (PQ-safe via X-Wing)
+	// Age encryption — supports both PQ hybrid (age1pq1...) and classical (age1...)
 	if recipientStr := os.Getenv("REPLICATE_AGE_RECIPIENT"); recipientStr != "" {
-		r, err := age.ParseX25519Recipient(recipientStr)
+		rcs, err := age.ParseRecipients(strings.NewReader(recipientStr))
 		if err != nil {
 			return fmt.Errorf("parse age recipient: %w", err)
 		}
-		cfg.AgeRecipient = r
+		if len(rcs) > 0 {
+			cfg.AgeRecipient = rcs[0]
+		}
 	}
 
 	replicator, err := badger.NewReplicator(d.db, cfg)
