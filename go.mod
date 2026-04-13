@@ -16,7 +16,7 @@ require (
 	github.com/luxfi/log v1.4.1
 	github.com/luxfi/math v1.2.3
 	github.com/luxfi/metric v1.5.0
-	github.com/luxfi/zapdb v1.7.0
+	github.com/luxfi/zapdb v1.8.0
 	github.com/stretchr/testify v1.11.1
 	github.com/syndtr/goleveldb v1.0.1-0.20220614013038-64ee5596c38a
 	go.uber.org/mock v0.6.0
