@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -96,8 +97,21 @@ func New(file string, configBytes []byte, namespace string, metrics metric.Regis
 		}
 	}
 
-	// Open the database
+	// Open the database, cleaning stale .mem files on retry.
+	// BadgerDB leaves .mem files on unclean shutdown; a subsequent Open
+	// fails with "File …/.mem already exists" because it tries to create
+	// a memtable at an ID that already has an orphaned file on disk.
 	badgerDB, err := badger.Open(opts)
+	if err != nil && strings.Contains(err.Error(), ".mem already exists") {
+		log.Warn(fmt.Sprintf("[zapdb] stale .mem files detected in %s, cleaning up and retrying", file))
+		// BadgerDB may store memtable files in the data dir itself or a "db" subdir.
+		for _, dir := range []string{file, filepath.Join(file, "db")} {
+			if cleanErr := removeStaleMemFiles(dir); cleanErr != nil {
+				return nil, fmt.Errorf("zapdb: failed to clean stale .mem files in %s: %w (original: %v)", dir, cleanErr, err)
+			}
+		}
+		badgerDB, err = badger.Open(opts)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -736,6 +750,28 @@ func (n *nopIterator) Error() error  { return n.err }
 func (n *nopIterator) Key() []byte   { return nil }
 func (n *nopIterator) Value() []byte { return nil }
 func (n *nopIterator) Release()      {}
+
+// removeStaleMemFiles removes orphaned .mem files left by an unclean shutdown.
+// These are empty memtable files that prevent BadgerDB from opening.
+func removeStaleMemFiles(dir string) error {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+	for _, e := range entries {
+		if !e.IsDir() && strings.HasSuffix(e.Name(), ".mem") {
+			path := filepath.Join(dir, e.Name())
+			log.Warn(fmt.Sprintf("[zapdb] removing stale memtable file: %s", path))
+			if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+				return err
+			}
+		}
+	}
+	return nil
+}
 
 // Config represents BadgerDB configuration
 type Config struct {
