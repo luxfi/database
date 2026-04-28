@@ -23,17 +23,46 @@ var (
 	ErrMaxSliceLenExceeded = errors.New("max slice length exceeded")
 )
 
+// MaxInt is the absolute upper bound on a slice length encoded by this codec.
+// Slice lengths are written as a uint32, so the encoded length cannot exceed
+// math.MaxInt32 without overflowing on 32-bit platforms during decode.
 const MaxInt = math.MaxInt32
 
-// Manager implements codec.Manager
+// DefaultMaxBlobSize is the default per-blob ceiling enforced by Manager.
+// It is sized to comfortably hold:
+//   - FHE bootstrap keys for STD128 / PN10QP27 / PN11QP54 parameters (~50MB)
+//   - State sync chunks and large Verkle proofs
+//   - 4x headroom on top of the largest known caller
+//
+// 256MiB is a soft cap; callers may pass a larger value to NewManager.
+// The hard cap remains MaxInt (math.MaxInt32 = ~2GiB) due to the on-disk
+// length prefix being uint32.
+const DefaultMaxBlobSize = 256 * 1024 * 1024
+
+// Manager implements codec.Manager.
+//
+// maxBlobSize bounds the largest single value the Manager will accept on
+// Marshal and the largest single value it will return on Unmarshal. Set via
+// NewManager. A value <= 0 means "use DefaultMaxBlobSize". The ceiling is
+// MaxInt; values above MaxInt are clamped.
 type Manager struct {
-	codecs map[uint16]codec.Codec
+	codecs      map[uint16]codec.Codec
+	maxBlobSize int
 }
 
-// NewManager creates a new codec manager
+// NewManager creates a new codec manager. maxSize is the per-blob ceiling
+// in bytes; pass 0 (or any non-positive value) to use DefaultMaxBlobSize.
+// Values above MaxInt are clamped to MaxInt.
 func NewManager(maxSize int) codec.Manager {
+	if maxSize <= 0 {
+		maxSize = DefaultMaxBlobSize
+	}
+	if maxSize > MaxInt {
+		maxSize = MaxInt
+	}
 	return &Manager{
-		codecs: make(map[uint16]codec.Codec),
+		codecs:      make(map[uint16]codec.Codec),
+		maxBlobSize: maxSize,
 	}
 }
 
@@ -63,6 +92,10 @@ func (m *Manager) Marshal(version uint16, source interface{}) ([]byte, error) {
 		return nil, err
 	}
 
+	if size+2 > m.maxBlobSize {
+		return nil, fmt.Errorf("%w: marshal %d > cap %d", ErrMaxSliceLenExceeded, size+2, m.maxBlobSize)
+	}
+
 	buf := make([]byte, size+2) // +2 for version
 	binary.BigEndian.PutUint16(buf, version)
 
@@ -77,6 +110,10 @@ func (m *Manager) Marshal(version uint16, source interface{}) ([]byte, error) {
 func (m *Manager) Unmarshal(source []byte, destination interface{}) (uint16, error) {
 	if len(source) < 2 {
 		return 0, errors.New("insufficient bytes for codec version")
+	}
+
+	if len(source) > m.maxBlobSize {
+		return 0, fmt.Errorf("%w: unmarshal %d > cap %d", ErrMaxSliceLenExceeded, len(source), m.maxBlobSize)
 	}
 
 	version := binary.BigEndian.Uint16(source)
