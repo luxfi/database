@@ -10,7 +10,7 @@ require (
 	github.com/luxfi/codec v1.1.3
 	github.com/luxfi/compress v0.0.5
 	github.com/luxfi/concurrent v0.0.3
-	github.com/luxfi/crypto v1.17.39
+	github.com/luxfi/crypto v1.19.0
 	github.com/luxfi/geth v1.16.69
 	github.com/luxfi/ids v1.2.9
 	github.com/luxfi/log v1.4.1
@@ -52,6 +52,7 @@ require (
 	github.com/klauspost/crc32 v1.3.0 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
+	github.com/luxfi/accel v1.0.7 // indirect
 	github.com/luxfi/constants v1.4.3 // indirect
 	github.com/luxfi/container v0.0.4 // indirect
 	github.com/luxfi/math/big v0.1.0 // indirect
