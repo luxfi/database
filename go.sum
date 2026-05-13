@@ -103,6 +103,8 @@ github.com/kr/pretty v0.3.1 h1:flRD4NNwYAUpkphVc1HcthR4KEIFJ65n8Mw5qdRn3LE=
 github.com/kr/pretty v0.3.1/go.mod h1:hoEshYVHaxMs3cyo3Yncou5ZscifuDolrwPKZanG3xk=
 github.com/kr/text v0.2.0 h1:5Nx0Ya0ZqY2ygV366QzturHI13Jq95ApcVaJBhpS+AY=
 github.com/kr/text v0.2.0/go.mod h1:eLer722TekiGuMkidMxC/pM04lWEeraHUUmBw8l2grE=
+github.com/luxfi/accel v1.0.7 h1:ksHieAp50umwqxqgyHk9WiOmXM54kia3IEDb5H7FsM8=
+github.com/luxfi/accel v1.0.7/go.mod h1:iZD3oxffiMEIT/KvzD8bgwC/cBn4AYlMW3QJpbRa4RE=
 github.com/luxfi/age v1.4.0 h1:tU5q65RQSQdaVq64Z/DVUhiPQMoMPQT6pr41LsvG0AQ=
 github.com/luxfi/age v1.4.0/go.mod h1:iAYAxgvrXxcy746+Ovh/eWWDuF9teJLNcCSSOX9RYW0=
 github.com/luxfi/cache v1.2.1 h1:kAzOS55/hmYeNKR+0HAKv4ma48Y6JjkI8UQeqdZ8bfI=
@@ -119,6 +121,8 @@ github.com/luxfi/container v0.0.4 h1:BXhF82WyfqVP5mjlNcr7tP0Fcnvl0Ap1rkiu+rq5XuM
 github.com/luxfi/container v0.0.4/go.mod h1:Z3SpmMF5d4t77MM0nHYXURpn+EMVaeu1fhbd/3BGaek=
 github.com/luxfi/crypto v1.17.39 h1:dDmktYOD/sU6WjIpitIfuHp7mRbc3izOsyJrQ1c5eOQ=
 github.com/luxfi/crypto v1.17.39/go.mod h1:mChLWmW4CLR1wAN6CeJTveCzUv0DTzGQnYgq01x3W0U=
+github.com/luxfi/crypto v1.19.0 h1:VtH6kvZrCEjCnkHPkhExDU+GJ0ZulYX4rnA+lXJdJHw=
+github.com/luxfi/crypto v1.19.0/go.mod h1:ee525i8Recbpb0jVTDZYZBr1MmvJ27OITJHZ/nlNMBw=
 github.com/luxfi/geth v1.16.69 h1:CHO6xTZ+A+3itk94ts4uyVRJajNVP3RxWTjJp5qGOlk=
 github.com/luxfi/geth v1.16.69/go.mod h1:8eEO1hW5sa6OH2VeCMaCPnRz28JBxFvCPBCWPLsU2ck=
 github.com/luxfi/ids v1.2.9 h1:+yjdhXW99drnd2Zlp1u/p8k3G23W3/1btJQ4ogHawUI=
