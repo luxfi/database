@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go-version: ['1.25.5']
+        go-version: ['1.26.3']
     env:
       GOTOOLCHAIN: auto
 
@@ -71,7 +71,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go-version: ['1.25.5']
+        go-version: ['1.26.3']
     env:
       GOTOOLCHAIN: auto
 
@@ -127,7 +127,7 @@ jobs:
   #   strategy:
   #     matrix:
   #       os: [ubuntu-latest, macos-latest, windows-latest]
-  #       go-version: ['1.22']
+  #       go-version: ['1.26.3']
   #   env:
   #     GOTOOLCHAIN: auto
 
