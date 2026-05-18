@@ -10,8 +10,9 @@ import (
 
 // common errors
 var (
-	ErrClosed   = errors.New("closed")
-	ErrNotFound = errors.New("not found")
+	ErrClosed       = errors.New("closed")
+	ErrNotFound     = errors.New("not found")
+	ErrReadOnlyTxn  = errors.New("write attempted in read-only transaction")
 )
 
 // ErrBackendDisabled is returned when a database backend is disabled at compile time

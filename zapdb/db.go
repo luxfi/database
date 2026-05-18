@@ -586,6 +586,10 @@ type iterator struct {
 	key     []byte
 	value   []byte
 	db      *Database
+	// shared is true when the iterator was created against a caller-owned
+	// transaction (e.g. from Update/View). In that case Release() must NOT
+	// Discard the txn — the caller owns its lifetime.
+	shared bool
 }
 
 // Next implements the Iterator interface
@@ -736,7 +740,9 @@ func (i *iterator) Release() {
 		if i.iter != nil {
 			i.iter.Close()
 		}
-		i.txn.Discard()
+		if !i.shared {
+			i.txn.Discard()
+		}
 	}
 }
 
