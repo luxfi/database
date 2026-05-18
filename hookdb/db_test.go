@@ -4,6 +4,7 @@
 package hookdb
 
 import (
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -20,11 +21,16 @@ func TestHookDB_Put(t *testing.T) {
 	defer hookDB.Close()
 
 	var eventCount atomic.Int32
-	var lastEvent Event
+	var (
+		mu        sync.Mutex
+		lastEvent Event
+	)
 
 	hookDB.RegisterHandler(nil, func(e Event) {
 		eventCount.Add(1)
+		mu.Lock()
 		lastEvent = e
+		mu.Unlock()
 	})
 
 	// Put a value
@@ -34,10 +40,13 @@ func TestHookDB_Put(t *testing.T) {
 	// Wait for async processing
 	time.Sleep(50 * time.Millisecond)
 
+	mu.Lock()
+	got := lastEvent
+	mu.Unlock()
 	require.Equal(int32(1), eventCount.Load())
-	require.Equal(EventPut, lastEvent.Type)
-	require.Equal([]byte("key1"), lastEvent.Key)
-	require.Equal([]byte("value1"), lastEvent.Value)
+	require.Equal(EventPut, got.Type)
+	require.Equal([]byte("key1"), got.Key)
+	require.Equal([]byte("value1"), got.Value)
 
 	// Verify data was written
 	val, err := hookDB.Get([]byte("key1"))
