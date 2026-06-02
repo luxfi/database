@@ -24,8 +24,8 @@ import (
 // batch operations. This is NOT a CPU mirror — it IS the GPU memory.
 //
 // This Go implementation serves as:
-//   1. The pure-Go path when CGO/C library is not linked
-//   2. Reference implementation matching the GPU kernel behavior exactly
+//  1. The pure-Go path when CGO/C library is not linked
+//  2. Reference implementation matching the GPU kernel behavior exactly
 //
 // Both paths produce identical results for all database operations.
 type gpuCache struct {
@@ -52,16 +52,16 @@ type gpuCache struct {
 
 // cacheSlot is a 64-byte cache line aligned hash table slot.
 type cacheSlot struct {
-	hash      uint64
-	keyOff    uint32
-	keyLen    uint32
-	valOff    uint32
-	valLen    uint32
-	lruTick   uint64
-	psl       uint16 // probe sequence length
-	flags     uint8
-	_pad      uint8
-	inlineKV  [28]byte // inline storage for small key+value
+	hash     uint64
+	keyOff   uint32
+	keyLen   uint32
+	valOff   uint32
+	valLen   uint32
+	lruTick  uint64
+	psl      uint16 // probe sequence length
+	flags    uint8
+	_pad     uint8
+	inlineKV [28]byte // inline storage for small key+value
 }
 
 const (

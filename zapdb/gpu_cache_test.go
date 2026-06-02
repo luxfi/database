@@ -176,7 +176,7 @@ func TestGPUCacheStress(t *testing.T) {
 	folder := t.TempDir()
 	gpuCfg := DefaultGPUCacheConfig()
 	gpuCfg.GPUMemoryBudget = 128 * 1024 * 1024 // 128 MB
-	gpuCfg.InitialCapacity = 1 << 14            // 16K slots
+	gpuCfg.InitialCapacity = 1 << 14           // 16K slots
 	gpuCfg.PromoteOnMiss = true
 	gpuCfg.WriteThrough = true
 
@@ -186,9 +186,9 @@ func TestGPUCacheStress(t *testing.T) {
 	require.True(db.GPUCacheEnabled())
 
 	const (
-		numGoroutines = 16
+		numGoroutines   = 16
 		opsPerGoroutine = 5000
-		keySpace = 2000 // keys to choose from
+		keySpace        = 2000 // keys to choose from
 	)
 
 	// Pre-generate key/value pairs

@@ -51,7 +51,7 @@ func newGPUDB256MB(b *testing.B) *Database {
 	b.Helper()
 	cfg := DefaultGPUCacheConfig()
 	cfg.GPUMemoryBudget = 256 * 1024 * 1024 // 256 MB
-	cfg.InitialCapacity = 1 << 16            // 64K slots
+	cfg.InitialCapacity = 1 << 16           // 64K slots
 	cfg.PromoteOnMiss = true
 	cfg.WriteThrough = true
 	db, err := NewWithGPU(b.TempDir(), nil, "bench-gpu", metric.NewRegistry(), cfg)
