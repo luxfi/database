@@ -314,7 +314,7 @@ func (db *Database) encrypt(plaintext []byte) ([]byte, error) {
 		return nil, err
 	}
 	ciphertext := db.cipher.Seal(nil, nonce, plaintext, nil)
-	return Codec.Marshal(CodecVersion, &encryptedValue{
+	return marshalEncryptedValue(&encryptedValue{
 		Ciphertext: ciphertext,
 		Nonce:      nonce,
 	})
@@ -322,7 +322,7 @@ func (db *Database) encrypt(plaintext []byte) ([]byte, error) {
 
 func (db *Database) decrypt(ciphertext []byte) ([]byte, error) {
 	val := encryptedValue{}
-	if _, err := Codec.Unmarshal(ciphertext, &val); err != nil {
+	if err := unmarshalEncryptedValue(ciphertext, &val); err != nil {
 		return nil, err
 	}
 	return db.cipher.Open(nil, val.Nonce, val.Ciphertext, nil)
