@@ -7,7 +7,6 @@ require (
 	github.com/klauspost/compress v1.18.4
 	github.com/luxfi/age v1.4.0
 	github.com/luxfi/cache v1.2.1
-	github.com/luxfi/codec v1.1.3
 	github.com/luxfi/compress v0.0.5
 	github.com/luxfi/concurrent v0.0.3
 	github.com/luxfi/crypto v1.19.0
