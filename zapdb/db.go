@@ -12,6 +12,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -20,7 +21,7 @@ import (
 	"github.com/luxfi/database"
 	log "github.com/luxfi/log"
 	"github.com/luxfi/metric"
-	badger "github.com/luxfi/zapdb"
+	zdb "github.com/luxfi/zapdb"
 	"github.com/luxfi/zapdb/options"
 )
 
@@ -33,10 +34,12 @@ var (
 
 // Database is a badgerdb backed database
 type Database struct {
-	dbPath  string
-	db      *badger.DB
-	closed  bool
-	closeMu sync.RWMutex
+	dbPath      string
+	db          *zdb.DB
+	repl        *vfsReplicator // non-nil once StartReplicator activates
+	replStarted bool           // guards against double-activation (node + factory both call StartReplicator)
+	closed      bool
+	closeMu     sync.RWMutex
 }
 
 // New returns a new badgerdb-backed database
@@ -47,7 +50,7 @@ func New(file string, configBytes []byte, namespace string, metrics metric.Regis
 	}
 
 	// Configure BadgerDB options with optimizations
-	opts := badger.DefaultOptions(file)
+	opts := zdb.DefaultOptions(file)
 	// Wrap our logger for BadgerDB
 	if configBytes != nil {
 		opts.Logger = &badgerLogger{namespace: namespace}
@@ -97,11 +100,17 @@ func New(file string, configBytes []byte, namespace string, metrics metric.Regis
 		}
 	}
 
+	// If physical replication is on and this is a fresh dir, hydrate it from the
+	// latest physical snapshot in S3 BEFORE Badger opens — so Badger recovers
+	// straight onto the restored LSM files (logical incrementals replay later in
+	// StartReplicator). No-op unless configured + dir empty + restore-on-boot.
+	maybeHydratePhysicalSnapshot(file)
+
 	// Open the database, cleaning stale .mem files on retry.
 	// BadgerDB leaves .mem files on unclean shutdown; a subsequent Open
 	// fails with "File …/.mem already exists" because it tries to create
 	// a memtable at an ID that already has an orphaned file on disk.
-	badgerDB, err := badger.Open(opts)
+	badgerDB, err := zdb.Open(opts)
 	if err != nil && strings.Contains(err.Error(), ".mem already exists") {
 		log.Warn(fmt.Sprintf("[zapdb] stale .mem files detected in %s, cleaning up and retrying", file))
 		// BadgerDB may store memtable files in the data dir itself or a "db" subdir.
@@ -110,7 +119,7 @@ func New(file string, configBytes []byte, namespace string, metrics metric.Regis
 				return nil, fmt.Errorf("zapdb: failed to clean stale .mem files in %s: %w (original: %v)", dir, cleanErr, err)
 			}
 		}
-		badgerDB, err = badger.Open(opts)
+		badgerDB, err = zdb.Open(opts)
 	}
 	if err != nil {
 		return nil, err
@@ -129,10 +138,15 @@ func New(file string, configBytes []byte, namespace string, metrics metric.Regis
 		}
 	}()
 
-	return &Database{
+	d := &Database{
 		dbPath: file,
 		db:     badgerDB,
-	}, nil
+	}
+	// Activate per-DB replication when REPLICATE_AUTO_ON_OPEN is set, so a
+	// subprocess VM plugin opening its own chain DB backs it up too (the node's
+	// base-DB replicator can't see across the plugin process boundary).
+	d.maybeAutoReplicate()
+	return d, nil
 }
 
 // Close implements the Database interface
@@ -149,6 +163,12 @@ func (d *Database) Close() error {
 	}
 	d.closed = true
 
+	// Stop the replication loop (if running) before closing the DB so an
+	// in-flight backup doesn't race the close.
+	if d.repl != nil {
+		d.repl.Stop()
+	}
+
 	if d.db == nil {
 		return nil
 	}
@@ -164,7 +184,7 @@ func (d *Database) HealthCheck(ctx context.Context) (interface{}, error) {
 		return nil, database.ErrClosed
 	}
 	// BadgerDB doesn't have a direct health check, but we can try a simple operation
-	return nil, d.db.View(func(txn *badger.Txn) error {
+	return nil, d.db.View(func(txn *zdb.Txn) error {
 		return nil
 	})
 }
@@ -184,13 +204,13 @@ func (d *Database) Has(key []byte) (bool, error) {
 	}
 
 	var exists bool
-	err := d.db.View(func(txn *badger.Txn) error {
+	err := d.db.View(func(txn *zdb.Txn) error {
 		_, err := txn.Get(key)
 		if err == nil {
 			exists = true
 			return nil
 		}
-		if errors.Is(err, badger.ErrKeyNotFound) {
+		if errors.Is(err, zdb.ErrKeyNotFound) {
 			exists = false
 			return nil
 		}
@@ -214,10 +234,10 @@ func (d *Database) Get(key []byte) ([]byte, error) {
 	}
 
 	var value []byte
-	err := d.db.View(func(txn *badger.Txn) error {
+	err := d.db.View(func(txn *zdb.Txn) error {
 		item, err := txn.Get(key)
 		if err != nil {
-			if errors.Is(err, badger.ErrKeyNotFound) {
+			if errors.Is(err, zdb.ErrKeyNotFound) {
 				return database.ErrNotFound
 			}
 			return err
@@ -242,7 +262,7 @@ func (d *Database) Put(key []byte, value []byte) error {
 		key = emptyKeyPlaceholder
 	}
 
-	return d.db.Update(func(txn *badger.Txn) error {
+	return d.db.Update(func(txn *zdb.Txn) error {
 		return txn.Set(key, value)
 	})
 }
@@ -261,7 +281,7 @@ func (d *Database) Delete(key []byte) error {
 		key = emptyKeyPlaceholder
 	}
 
-	return d.db.Update(func(txn *badger.Txn) error {
+	return d.db.Update(func(txn *zdb.Txn) error {
 		return txn.Delete(key)
 	})
 }
@@ -301,7 +321,7 @@ func (d *Database) NewIteratorWithStartAndPrefix(start, prefix []byte) database.
 	}
 
 	txn := d.db.NewTransaction(false)
-	opts := badger.DefaultIteratorOptions
+	opts := zdb.DefaultIteratorOptions
 	opts.PrefetchSize = 10
 
 	it := txn.NewIterator(opts)
@@ -393,8 +413,8 @@ func (d *Database) Empty() (bool, error) {
 	}
 
 	empty := true
-	err := d.db.View(func(txn *badger.Txn) error {
-		opts := badger.DefaultIteratorOptions
+	err := d.db.View(func(txn *zdb.Txn) error {
+		opts := zdb.DefaultIteratorOptions
 		opts.PrefetchValues = false
 		it := txn.NewIterator(opts)
 		defer it.Close()
@@ -418,8 +438,8 @@ func (d *Database) Len() (int, error) {
 	}
 
 	count := 0
-	err := d.db.View(func(txn *badger.Txn) error {
-		opts := badger.DefaultIteratorOptions
+	err := d.db.View(func(txn *zdb.Txn) error {
+		opts := zdb.DefaultIteratorOptions
 		opts.PrefetchValues = false
 		it := txn.NewIterator(opts)
 		defer it.Close()
@@ -507,7 +527,7 @@ func (b *batch) Write() error {
 		return database.ErrClosed
 	}
 
-	return b.db.db.Update(func(txn *badger.Txn) error {
+	return b.db.db.Update(func(txn *zdb.Txn) error {
 		for _, op := range b.ops {
 			if op.delete {
 				if err := txn.Delete(op.key); err != nil {
@@ -575,8 +595,8 @@ func (b *batch) Size() int {
 
 // iterator wraps a BadgerDB iterator
 type iterator struct {
-	txn     *badger.Txn
-	iter    *badger.Iterator
+	txn     *zdb.Txn
+	iter    *zdb.Iterator
 	prefix  []byte
 	start   []byte
 	closed  bool
@@ -805,7 +825,7 @@ func parseConfig(configBytes []byte) (*Config, error) {
 }
 
 // applyConfig applies parsed configuration to BadgerDB options
-func applyConfig(opts *badger.Options, cfg *Config) {
+func applyConfig(opts *zdb.Options, cfg *Config) {
 	if cfg.SyncWrites {
 		opts.SyncWrites = true
 	}
@@ -880,7 +900,7 @@ func (l *badgerLogger) Debugf(format string, args ...interface{}) {
 // snapshotDB represents a snapshot of the database at a point in time
 type snapshotDB struct {
 	db     *Database
-	txn    *badger.Txn
+	txn    *zdb.Txn
 	closed bool
 	mu     sync.RWMutex
 }
@@ -899,7 +919,7 @@ func (s *snapshotDB) Has(key []byte) (bool, error) {
 	}
 
 	_, err := s.txn.Get(key)
-	if err == badger.ErrKeyNotFound {
+	if err == zdb.ErrKeyNotFound {
 		return false, nil
 	}
 	return err == nil, err
@@ -919,7 +939,7 @@ func (s *snapshotDB) Get(key []byte) ([]byte, error) {
 	}
 
 	item, err := s.txn.Get(key)
-	if err == badger.ErrKeyNotFound {
+	if err == zdb.ErrKeyNotFound {
 		return nil, database.ErrNotFound
 	}
 	if err != nil {
@@ -968,7 +988,7 @@ func (s *snapshotDB) NewIteratorWithStartAndPrefix(start []byte, prefix []byte) 
 		return &nopIterator{err: database.ErrClosed}
 	}
 
-	opts := badger.DefaultIteratorOptions
+	opts := zdb.DefaultIteratorOptions
 	if len(prefix) > 0 {
 		opts.Prefix = prefix
 	}
@@ -1041,7 +1061,7 @@ func (s *snapshotDB) Empty() (bool, error) {
 		return false, database.ErrClosed
 	}
 
-	opts := badger.DefaultIteratorOptions
+	opts := zdb.DefaultIteratorOptions
 	opts.PrefetchValues = false
 	it := s.txn.NewIterator(opts)
 	defer it.Close()
@@ -1060,7 +1080,7 @@ func (s *snapshotDB) Len() (int, error) {
 	}
 
 	count := 0
-	opts := badger.DefaultIteratorOptions
+	opts := zdb.DefaultIteratorOptions
 	opts.PrefetchValues = false
 	it := s.txn.NewIterator(opts)
 	defer it.Close()
@@ -1097,45 +1117,259 @@ func (n *nopBatch) Inner() database.Batch                       { return n }
 // StartReplicator starts encrypted streaming replication to S3 if configured.
 // Reads config from REPLICATE_* env vars. No-op if REPLICATE_S3_ENDPOINT is not set.
 // Implements database.Replicatable.
+//
+// On boot, if the database is empty and a snapshot exists in S3, it is restored
+// (latest full snapshot + newer incrementals) synchronously before this returns,
+// so a fresh node comes up on the latest replicated state instead of importing or
+// replaying per-node. The continuous backup loop (full snapshot hourly, incremental
+// every second) then runs in the background for the life of ctx. This call does NOT
+// block. Set REPLICATE_RESTORE_ON_BOOT=false to skip restore (backup-only).
 func (d *Database) StartReplicator(ctx context.Context) error {
 	endpoint := os.Getenv("REPLICATE_S3_ENDPOINT")
 	if endpoint == "" {
 		return nil // replication not configured
 	}
 
-	bucket := os.Getenv("REPLICATE_S3_BUCKET")
-	if bucket == "" {
-		bucket = "replicate"
+	// Idempotent: the node (node.initDatabase) and the database factory both call
+	// StartReplicator on the base DB. Only the first wins — a second activation
+	// would run a duplicate backup loop writing the same versions to the same S3
+	// path. Claim under the lock so concurrent calls can't both proceed.
+	d.closeMu.Lock()
+	if d.replStarted {
+		d.closeMu.Unlock()
+		return nil
+	}
+	d.replStarted = true
+	d.closeMu.Unlock()
+
+	cfg := vfsReplicatorConfig{
+		Endpoint:    normalizeS3Endpoint(endpoint, os.Getenv("REPLICATE_S3_USE_SSL") == "true"),
+		Bucket:      envOr("REPLICATE_S3_BUCKET", "replicate"),
+		Region:      envOr("REPLICATE_S3_REGION", "us-central1"),
+		Path:        d.replicationPath(),
+		AccessKey:   os.Getenv("REPLICATE_S3_ACCESS_KEY"),
+		SecretKey:   os.Getenv("REPLICATE_S3_SECRET_KEY"),
+		Compress:    os.Getenv("REPLICATE_COMPRESS") != "false", // zstd on by default
+		SnapEvery:   envSeconds("REPLICATE_SNAPSHOT_INTERVAL_SECONDS"),
+		IncEvery:    envSeconds("REPLICATE_INCREMENTAL_INTERVAL_SECONDS"),
+		SnapMinIncs: envInt("REPLICATE_SNAPSHOT_MIN_INCREMENTS"),
+		MaxPending:  16,
+		DBPath:      d.dbPath,
+		Physical:    os.Getenv("REPLICATE_PHYSICAL_SNAPSHOT") == "true",
+		CDC:         os.Getenv("REPLICATE_CDC") == "true",
 	}
 
-	cfg := badger.ReplicatorConfig{
-		Bucket:    bucket,
-		Endpoint:  endpoint,
-		Region:    envOr("REPLICATE_S3_REGION", "us-central1"),
-		AccessKey: os.Getenv("REPLICATE_S3_ACCESS_KEY"),
-		SecretKey: os.Getenv("REPLICATE_S3_SECRET_KEY"),
-		UseSSL:    os.Getenv("REPLICATE_S3_USE_SSL") == "true",
-		Path:      envOr("REPLICATE_S3_PATH", d.dbPath),
-	}
-
-	// Age encryption — supports both PQ hybrid (age1pq1...) and classical (age1...)
+	// Encryption. Resolve the age identity, then the recipient. Order of
+	// precedence for the identity (the private key, needed to DECRYPT on restore):
+	//   1. REPLICATE_AGE_IDENTITY (explicit secret — operator-managed),
+	//   2. REPLICATE_AGE_KEY_FILE (generate-on-first-use, persist, reload) — the
+	//      zero-config "PQ out of the box" path.
+	// The recipient (encrypt target) defaults to the identity's own recipient, so
+	// one PQ key configures BOTH directions. Backups are post-quantum (ML-KEM-768
+	// + X25519 hybrid) by default whenever a key is available — PQ adds ~1.6 KB and
+	// ~0.1 ms per object, so there's no reason not to.
+	cfg.Identity = resolveReplicationIdentity()
 	if recipientStr := os.Getenv("REPLICATE_AGE_RECIPIENT"); recipientStr != "" {
 		rcs, err := age.ParseRecipients(strings.NewReader(recipientStr))
 		if err != nil {
 			return fmt.Errorf("parse age recipient: %w", err)
 		}
 		if len(rcs) > 0 {
-			cfg.AgeRecipient = rcs[0]
+			cfg.Recipient = rcs[0]
+		}
+	} else if cfg.Identity != nil {
+		// Derive the encrypt target from the identity so a single PQ key suffices.
+		if r := recipientFor(cfg.Identity); r != nil {
+			cfg.Recipient = r
 		}
 	}
 
-	replicator, err := badger.NewReplicator(d.db, cfg)
+	replicator, err := newVFSReplicator(ctx, d.db, cfg)
 	if err != nil {
 		return fmt.Errorf("create replicator: %w", err)
 	}
 
-	replicator.Start(ctx)
+	// Restore-on-boot. Normally gated on an empty DB so we never clobber newer
+	// local state with an older full snapshot. In PHYSICAL mode the full snapshot
+	// was already hydrated into the LSM dir before Badger opened (so the DB is
+	// non-empty here by design), and Restore only replays logical incrementals
+	// NEWER than the current version — it never clobbers — so we always run it.
+	if os.Getenv("REPLICATE_RESTORE_ON_BOOT") != "false" {
+		empty, err := d.isEmpty()
+		if err != nil {
+			return fmt.Errorf("replicate: emptiness check: %w", err)
+		}
+		if empty || replicator.physical {
+			log.Info(fmt.Sprintf("[zapdb] replicate: restoring from s3://%s/%s (empty=%v physical=%v)", cfg.Bucket, cfg.Path, empty, replicator.physical))
+			if err := replicator.Restore(ctx); err != nil {
+				log.Warn(fmt.Sprintf("[zapdb] replicate: restore-on-boot failed (continuing fresh): %v", err))
+			} else {
+				log.Info("[zapdb] replicate: restore-on-boot complete")
+			}
+		} else {
+			log.Info("[zapdb] replicate: non-empty DB, skipping restore-on-boot")
+		}
+	}
+
+	// Run the continuous backup loop in the background for the life of ctx.
+	d.repl = replicator
+	go replicator.Start(ctx)
 	return nil
+}
+
+// replicationPath returns the S3 key prefix this DB replicates under.
+//
+// By default (operator/base-DB flow) it is REPLICATE_S3_PATH verbatim — one
+// stream per node holding the shared base DB (P/X + every in-process VM, which
+// share the base via prefixdb).
+//
+// When REPLICATE_AUTO_ON_OPEN is set, EACH zapdb instance replicates to its own
+// sub-prefix keyed by its on-disk location. This is required because the ZAP
+// plugin transport cannot proxy a database across processes: every subprocess
+// VM (e.g. the C-Chain EVM/coreth) opens its OWN zapdb under
+// <chainData>/<chainID>/db, so its trie never lands in the node's base DB.
+// Auto-on-open lets the plugin process activate replication of that per-chain DB
+// to s3://<bucket>/<REPLICATE_S3_PATH>/<chainID> — so ALL chains, in-process and
+// plugin, are backed up incrementally with one stream per physical zapdb (the
+// most granular layout the multi-process architecture allows).
+func (d *Database) replicationPath() string {
+	base := envOr("REPLICATE_S3_PATH", d.dbPath)
+	if os.Getenv("REPLICATE_AUTO_ON_OPEN") == "" {
+		return base
+	}
+	return filepath.Join(base, dbReplicationKey(d.dbPath))
+}
+
+// dbReplicationKey derives a stable, human-readable S3 sub-key from a zapdb's
+// on-disk path. Subprocess VM databases live at <chainData>/<network>/<chainID>/db
+// — for those it returns the chainID. The node base DB (…/db/<network>) keys to
+// "base". Anything else falls back to a sanitized tail of the path so two
+// different DBs never collide.
+func dbReplicationKey(p string) string {
+	parts := strings.Split(filepath.Clean(p), string(filepath.Separator))
+	for i, seg := range parts {
+		// .../chainData/<network>/<chainID>/db
+		if seg == "chainData" && i+3 < len(parts) && parts[i+3] == "db" {
+			return parts[i+2]
+		}
+	}
+	// Node base DB is opened at "<dataDir>/db/<network>" (or "<dataDir>/db").
+	for i, seg := range parts {
+		if seg == "db" {
+			if i+1 < len(parts) {
+				return "base-" + parts[i+1]
+			}
+			return "base"
+		}
+	}
+	if n := len(parts); n > 0 {
+		return strings.NewReplacer("/", "_", ".", "_").Replace(parts[n-1])
+	}
+	return "base"
+}
+
+// maybeAutoReplicate starts replication of this DB when REPLICATE_AUTO_ON_OPEN
+// is set and an S3 endpoint is configured. Called from New so that every zapdb
+// — including the ones subprocess VM plugins open for themselves — activates
+// replication without the opener having to know about it.
+//
+// This runs SYNCHRONOUSLY: StartReplicator performs restore-on-boot (when the
+// DB is empty) before returning, and the caller — a subprocess VM plugin about
+// to hand this DB to its VM's Initialize — must observe the restored state, not
+// race it. The continuous backup loop StartReplicator launches is itself async
+// (`go replicator.Start`), so only the one-shot restore blocks New. A restore
+// failure is logged and swallowed: a fresh chain then bootstraps normally.
+func (d *Database) maybeAutoReplicate() {
+	if os.Getenv("REPLICATE_AUTO_ON_OPEN") == "" || os.Getenv("REPLICATE_S3_ENDPOINT") == "" {
+		return
+	}
+	if err := d.StartReplicator(context.Background()); err != nil {
+		log.Warn(fmt.Sprintf("[zapdb] auto-replicate %s: %v", d.dbPath, err))
+	}
+}
+
+// normalizeS3Endpoint ensures the endpoint carries an http(s) scheme, derived
+// from REPLICATE_S3_USE_SSL when absent (the vfs s3 backend wants a full URL).
+func normalizeS3Endpoint(endpoint string, useSSL bool) string {
+	if strings.HasPrefix(endpoint, "http://") || strings.HasPrefix(endpoint, "https://") {
+		return endpoint
+	}
+	if useSSL {
+		return "https://" + endpoint
+	}
+	return "http://" + endpoint
+}
+
+// isEmpty reports whether the database holds no keys. Used to gate restore-on-boot.
+func (d *Database) isEmpty() (bool, error) {
+	empty := true
+	err := d.db.View(func(txn *zdb.Txn) error {
+		opts := zdb.DefaultIteratorOptions
+		opts.PrefetchValues = false
+		it := txn.NewIterator(opts)
+		defer it.Close()
+		it.Rewind()
+		if it.Valid() {
+			empty = false
+		}
+		return nil
+	})
+	return empty, err
+}
+
+// envSeconds parses an integer-seconds env var into a Duration (0 if unset/invalid,
+// which lets newVFSReplicator apply its defaults: 1h snapshot, 1s incremental).
+func envSeconds(key string) time.Duration {
+	if v := os.Getenv(key); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			return time.Duration(n) * time.Second
+		}
+	}
+	return 0
+}
+
+// maybeHydratePhysicalSnapshot restores a physical (SST-copy) snapshot into a
+// fresh LSM dir before Badger opens it. Gated: physical mode on, auto-on-open
+// (per-DB streams), restore-on-boot not disabled, S3 configured, and the dir
+// empty (never clobber existing data). Best-effort — a miss just starts fresh.
+func maybeHydratePhysicalSnapshot(file string) {
+	if os.Getenv("REPLICATE_PHYSICAL_SNAPSHOT") != "true" ||
+		os.Getenv("REPLICATE_S3_ENDPOINT") == "" ||
+		os.Getenv("REPLICATE_AUTO_ON_OPEN") == "" ||
+		os.Getenv("REPLICATE_RESTORE_ON_BOOT") == "false" {
+		return
+	}
+	if entries, _ := os.ReadDir(file); len(entries) > 0 {
+		return // not empty — don't overwrite live state
+	}
+	if err := os.MkdirAll(file, 0o755); err != nil {
+		return
+	}
+	cfg := vfsReplicatorConfig{
+		Endpoint:  normalizeS3Endpoint(os.Getenv("REPLICATE_S3_ENDPOINT"), os.Getenv("REPLICATE_S3_USE_SSL") == "true"),
+		Bucket:    envOr("REPLICATE_S3_BUCKET", "replicate"),
+		Region:    envOr("REPLICATE_S3_REGION", "us-central1"),
+		Path:      (&Database{dbPath: file}).replicationPath(),
+		AccessKey: os.Getenv("REPLICATE_S3_ACCESS_KEY"),
+		SecretKey: os.Getenv("REPLICATE_S3_SECRET_KEY"),
+	}
+	v, err := latestPhysicalInto(context.Background(), cfg, resolveReplicationIdentity(), file)
+	if err != nil {
+		log.Warn(fmt.Sprintf("[zapdb] replicate: physical hydrate %s: %v", file, err))
+		return
+	}
+	if v > 0 {
+		log.Info(fmt.Sprintf("[zapdb] replicate: hydrated physical snapshot version %d into %s", v, file))
+	}
+}
+
+func envInt(key string) int {
+	if v := os.Getenv(key); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			return n
+		}
+	}
+	return 0
 }
 
 func envOr(key, fallback string) string {
