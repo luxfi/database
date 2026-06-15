@@ -3,8 +3,9 @@
 
 package zapdb
 
-// Canonical ZAP encoding for a KV record — the wire format defined in
-// github.com/zap-proto/zap-spec/zapdb.zap. Unlike luxfi/zapdb's pb.marshal_zap
+// Canonical ZAP encoding for a KV record — the wire format defined in the
+// colocated schema ./zapdb.zap (written in the ZAP format whose layout rules
+// live in github.com/zap-proto/zap-spec). Unlike luxfi/zapdb's pb.marshal_zap
 // (a sequential [u32 len][bytes]… layout that is "zap" in name only), this is a
 // true ZAP struct: a fixed 48-byte header of scalars and (offset:u32, length:u32)
 // pointer pairs, with payloads in the heap area that follows. Any field resolves
