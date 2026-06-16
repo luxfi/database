@@ -1211,10 +1211,39 @@ func (d *Database) StartReplicator(ctx context.Context) error {
 		}
 	}
 
-	// Run the continuous backup loop in the background for the life of ctx.
+	// Backer vs restorer. In a multi-node set exactly one node should WRITE the
+	// shared stream; the rest restore-on-boot (above) and stop. A restore-only
+	// node has already pulled state, so we just don't start the backup loop.
 	d.repl = replicator
-	go replicator.Start(ctx)
+	if shouldBackup() {
+		go replicator.Start(ctx)
+	} else {
+		log.Info("[zapdb] replicate: restore-only node (REPLICATE_BACKUP=false / not the source ordinal) — backup loop not started")
+	}
 	return nil
+}
+
+// shouldBackup reports whether THIS node runs the backup loop. Default true.
+// REPLICATE_BACKUP=false forces restore-only. REPLICATE_SOURCE_ORDINAL (set by
+// the operator from a StatefulSet's sourceNodeIndex) elects a single backer: the
+// node backs up only when its own ordinal — the trailing -N of HOSTNAME/POD_NAME
+// — matches. Every node still restores-on-boot; only the writer is gated.
+func shouldBackup() bool {
+	if os.Getenv("REPLICATE_BACKUP") == "false" {
+		return false
+	}
+	src := os.Getenv("REPLICATE_SOURCE_ORDINAL")
+	if src == "" {
+		return true
+	}
+	host := os.Getenv("POD_NAME")
+	if host == "" {
+		host, _ = os.Hostname()
+	}
+	if i := strings.LastIndexByte(host, '-'); i >= 0 {
+		return host[i+1:] == src
+	}
+	return true
 }
 
 // replicationPath returns the S3 key prefix this DB replicates under.
