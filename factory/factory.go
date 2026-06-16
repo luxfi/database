@@ -4,7 +4,9 @@
 package factory
 
 import (
+	"context"
 	"fmt"
+	"os"
 	"sync"
 
 	"github.com/luxfi/database"
@@ -29,7 +31,36 @@ type DatabaseFactory func(
 var (
 	factoryMu sync.RWMutex
 	factories = make(map[string]DatabaseFactory)
+
+	// replOnce guards base-DB replication so it activates exactly once per process.
+	replOnce sync.Once
 )
+
+// startReplicationIfBase activates ZapDB→S3 replication for the node's single
+// base database: restore-on-boot (a fresh, empty DB pulls the latest snapshot +
+// incrementals before any chain opens) plus a background snapshot/incremental
+// loop. It is a no-op unless REPLICATE_S3_ENDPOINT is set AND this is the base
+// DB — node.initDatabase passes meterDBRegName=="all"; VM-plugin subprocesses
+// pass a different name ("meterdb"), so they never replicate and can't collide
+// on the S3 path even though they inherit the same REPLICATE_* env. The hook
+// runs inside factory.New (before it returns), so restore completes before the
+// node reads genesis or opens chains.
+func startReplicationIfBase(db database.Database, meterDBRegName string) database.Database {
+	if meterDBRegName != "all" || os.Getenv("REPLICATE_S3_ENDPOINT") == "" {
+		return db
+	}
+	replOnce.Do(func() {
+		r, ok := database.UnwrapTo[database.Replicatable](db)
+		if !ok {
+			log.Warn("zapdb: base DB is not Replicatable, skipping replication")
+			return
+		}
+		if err := r.StartReplicator(context.Background()); err != nil {
+			log.Warn(fmt.Sprintf("zapdb: failed to start base-DB replication: %v", err))
+		}
+	})
+	return db
+}
 
 // RegisterDatabase registers a database factory for a given name
 func RegisterDatabase(name string, factory DatabaseFactory) {
@@ -135,7 +166,7 @@ func New(
 		if err != nil {
 			return nil, fmt.Errorf("failed to create meterdb: %w", err)
 		}
-		return meterDB, nil
+		return startReplicationIfBase(meterDB, meterDBRegName), nil
 	} else if registerer != nil {
 		if reg, ok := registerer.(metric.Registry); ok {
 			metricsInstance = metric.NewWithRegistry(metricsPrefix, reg)
@@ -146,8 +177,8 @@ func New(
 		if err != nil {
 			return nil, fmt.Errorf("failed to create meterdb: %w", err)
 		}
-		return meterDB, nil
+		return startReplicationIfBase(meterDB, meterDBRegName), nil
 	}
 
-	return db, nil
+	return startReplicationIfBase(db, meterDBRegName), nil
 }

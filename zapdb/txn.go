@@ -8,12 +8,12 @@ import (
 	"time"
 
 	"github.com/luxfi/database"
-	badger "github.com/luxfi/zapdb"
+	zdb "github.com/luxfi/zapdb"
 )
 
-// txnWrap adapts a badger.Txn to database.Txn.
+// txnWrap adapts a zdb.Txn to database.Txn.
 type txnWrap struct {
-	tx       *badger.Txn
+	tx       *zdb.Txn
 	readOnly bool
 }
 
@@ -36,7 +36,7 @@ func userKey(k []byte) []byte {
 
 func (t *txnWrap) Has(key []byte) (bool, error) {
 	_, err := t.tx.Get(keyFor(key))
-	if err == badger.ErrKeyNotFound {
+	if err == zdb.ErrKeyNotFound {
 		return false, nil
 	}
 	if err != nil {
@@ -47,7 +47,7 @@ func (t *txnWrap) Has(key []byte) (bool, error) {
 
 func (t *txnWrap) Get(key []byte) ([]byte, error) {
 	item, err := t.tx.Get(keyFor(key))
-	if err == badger.ErrKeyNotFound {
+	if err == zdb.ErrKeyNotFound {
 		return nil, database.ErrNotFound
 	}
 	if err != nil {
@@ -67,7 +67,7 @@ func (t *txnWrap) PutWithTTL(key, value []byte, ttl time.Duration) error {
 	if t.readOnly {
 		return database.ErrReadOnlyTxn
 	}
-	e := badger.NewEntry(keyFor(key), value)
+	e := zdb.NewEntry(keyFor(key), value)
 	if ttl > 0 {
 		e = e.WithTTL(ttl)
 	}
@@ -94,7 +94,7 @@ func (t *txnWrap) NewIteratorWithStart(start []byte) database.Iterator {
 }
 
 func (t *txnWrap) newIterator(start, prefix []byte) database.Iterator {
-	opts := badger.DefaultIteratorOptions
+	opts := zdb.DefaultIteratorOptions
 	opts.PrefetchSize = 10
 	it := t.tx.NewIterator(opts)
 	iter := &iterator{
@@ -166,8 +166,8 @@ func (d *Database) PutWithTTL(key, value []byte, ttl time.Duration) error {
 		return database.ErrClosed
 	}
 
-	return d.db.Update(func(tx *badger.Txn) error {
-		e := badger.NewEntry(keyFor(key), value)
+	return d.db.Update(func(tx *zdb.Txn) error {
+		e := zdb.NewEntry(keyFor(key), value)
 		if ttl > 0 {
 			e = e.WithTTL(ttl)
 		}
