@@ -100,9 +100,22 @@ func (p *Database) NewIteratorWithPrefix(prefix []byte) database.Iterator {
 }
 
 // NewIteratorWithStartAndPrefix implements the database.Database interface.
+//
+// prefixedStart MUST be derived only when the caller supplied a start: a nil
+// start means "begin at the prefix", and the underlying store seeks to the
+// prefix itself. Synthesizing start = p.prefix for a nil start would seek the
+// underlying iterator to the FRONT of this partition (p.prefix), which sorts
+// BEFORE p.prefix+prefix; with intervening keys under other sub-prefixes a
+// store that stops at the first non-matching key after a start-seek (zapdb)
+// then returns zero rows for a prefix that does exist. Each prefixed key is
+// also built in its OWN buffer (prefixKey) so the two never alias p.prefix's
+// backing array.
 func (p *Database) NewIteratorWithStartAndPrefix(start, prefix []byte) database.Iterator {
-	prefixedStart := append(p.prefix, start...)
-	prefixedPrefix := append(p.prefix, prefix...)
+	var prefixedStart []byte
+	if len(start) > 0 {
+		prefixedStart = p.prefixKey(start)
+	}
+	prefixedPrefix := p.prefixKey(prefix)
 	return &iterator{
 		Iterator: p.db.NewIteratorWithStartAndPrefix(prefixedStart, prefixedPrefix),
 		prefix:   p,
