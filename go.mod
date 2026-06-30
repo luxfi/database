@@ -10,7 +10,7 @@ require (
 	github.com/cockroachdb/pebble v1.1.5
 	github.com/hanzoai/vfs v0.4.1
 	github.com/klauspost/compress v1.18.6
-	github.com/luxfi/age v1.5.0
+	github.com/luxfi/age v1.6.0
 	github.com/luxfi/cache v1.2.1
 	github.com/luxfi/compress v0.0.5
 	github.com/luxfi/concurrent v0.0.3
