@@ -12,7 +12,7 @@ permissions:
 jobs:
   test:
     name: Test Before Release
-    runs-on: ubuntu-latest
+    runs-on: lux-build-amd64
     env:
       GOTOOLCHAIN: auto
 
@@ -39,7 +39,7 @@ jobs:
   release:
     name: Create Release
     needs: test
-    runs-on: ubuntu-latest
+    runs-on: lux-build-amd64
     env:
       GOTOOLCHAIN: auto
 
