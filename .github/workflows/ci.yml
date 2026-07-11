@@ -9,7 +9,7 @@ on:
 jobs:
   test:
     name: Test
-    runs-on: ubuntu-latest
+    runs-on: lux-build-amd64
     strategy:
       matrix:
         go-version: ['1.26.4']
@@ -68,7 +68,7 @@ jobs:
 
   integration-test:
     name: Integration Tests
-    runs-on: ubuntu-latest
+    runs-on: lux-build-amd64
     strategy:
       matrix:
         go-version: ['1.26.4']
@@ -90,7 +90,7 @@ jobs:
 
   security:
     name: Security Scan
-    runs-on: ubuntu-latest
+    runs-on: lux-build-amd64
     env:
       GOTOOLCHAIN: auto
 
