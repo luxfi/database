@@ -58,8 +58,15 @@ func New(file string, configBytes []byte, namespace string, metrics metric.Regis
 		opts.Logger = nil // Silent mode by default
 	}
 
-	// Performance optimizations for blockchain + Verkle tree workloads
-	opts.SyncWrites = true            // Sync writes for data integrity           // Async writes for better performance
+	// Performance optimizations for blockchain + Verkle tree workloads.
+	//
+	// SyncWrites=true fsyncs every commit. That is the safe default and stays
+	// the default, but it is the dominant cost on network-attached disks: on a
+	// cloud block volume it is worth roughly 10 ms per write, which a
+	// metadata-heavy caller pays on every single operation. Callers that can
+	// accept losing the last writes on a machine crash may set
+	// "syncWrites": false in the config; see applyConfig.
+	opts.SyncWrites = true
 	opts.NumCompactors = 4            // More compactors for faster background compaction
 	opts.NumLevelZeroTables = 10      // More L0 tables before stalling
 	opts.NumLevelZeroTablesStall = 15 // Stall writes if L0 tables exceed this
@@ -801,7 +808,12 @@ func removeStaleMemFiles(dir string) error {
 
 // Config represents BadgerDB configuration
 type Config struct {
-	SyncWrites           bool    `json:"syncWrites"`
+	// SyncWrites is a POINTER so the config can express three states: absent
+	// (nil, keep the built-in default), explicitly true, and explicitly false.
+	// As a plain bool the zero value was indistinguishable from "unset", so
+	// applyConfig could only ever turn syncing ON and `"syncWrites": false`
+	// was silently ignored.
+	SyncWrites           *bool   `json:"syncWrites"`
 	NumCompactors        int     `json:"numCompactors"`
 	NumMemtables         int     `json:"numMemtables"`
 	MemTableSize         int64   `json:"memTableSize"`
@@ -826,8 +838,8 @@ func parseConfig(configBytes []byte) (*Config, error) {
 
 // applyConfig applies parsed configuration to BadgerDB options
 func applyConfig(opts *zdb.Options, cfg *Config) {
-	if cfg.SyncWrites {
-		opts.SyncWrites = true
+	if cfg.SyncWrites != nil {
+		opts.SyncWrites = *cfg.SyncWrites
 	}
 	if cfg.NumCompactors > 0 {
 		opts.NumCompactors = cfg.NumCompactors
