@@ -8,19 +8,19 @@ require (
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.13
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.97.3
 	github.com/cockroachdb/pebble v1.1.5
-	github.com/hanzoai/vfs v0.4.1
+	github.com/hanzoai/vfs v0.4.3
 	github.com/klauspost/compress v1.18.6
 	github.com/luxfi/age v1.6.0
 	github.com/luxfi/cache v1.3.1
 	github.com/luxfi/compress v0.1.1
 	github.com/luxfi/concurrent v0.1.1
 	github.com/luxfi/crypto v1.20.2
-	github.com/luxfi/geth v1.20.1
+	github.com/luxfi/geth v1.20.2
 	github.com/luxfi/ids v1.3.2
 	github.com/luxfi/log v1.4.3
 	github.com/luxfi/math v1.5.1
 	github.com/luxfi/metric v1.8.1
-	github.com/luxfi/zapdb v1.10.0
+	github.com/luxfi/zapdb v1.10.6
 	github.com/stretchr/testify v1.11.1
 	github.com/syndtr/goleveldb v1.0.1-0.20220721030215-126854af5e6d
 	go.uber.org/mock v0.6.0
@@ -69,12 +69,15 @@ require (
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/rpc v1.2.1 // indirect
 	github.com/grandcat/zeroconf v1.0.0 // indirect
+	github.com/hanzos3/crc64nvme v1.1.2 // indirect
+	github.com/hanzos3/go v1.0.2 // indirect
+	github.com/hanzos3/md5-simd v1.1.3 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
 	github.com/klauspost/crc32 v1.3.0 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/luxfi/accel v1.2.4 // indirect
-	github.com/luxfi/container v0.2.1 // indirect
+	github.com/luxfi/container v0.2.2 // indirect
 	github.com/luxfi/math/big v0.1.0 // indirect
 	github.com/luxfi/mdns v0.1.1 // indirect
 	github.com/luxfi/mock v0.1.1 // indirect
@@ -82,9 +85,6 @@ require (
 	github.com/mattn/go-colorable v0.1.15 // indirect
 	github.com/mattn/go-isatty v0.0.22 // indirect
 	github.com/miekg/dns v1.1.72 // indirect
-	github.com/minio/crc64nvme v1.1.1 // indirect
-	github.com/minio/md5-simd v1.1.2 // indirect
-	github.com/minio/minio-go/v7 v7.0.100 // indirect
 	github.com/mr-tron/base58 v1.3.0 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/onsi/gomega v1.39.1 // indirect
@@ -100,9 +100,9 @@ require (
 	github.com/rs/xid v1.6.0 // indirect
 	github.com/tinylib/msgp v1.6.4 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
-	go.opentelemetry.io/otel v1.43.0 // indirect
-	go.opentelemetry.io/otel/metric v1.43.0 // indirect
-	go.opentelemetry.io/otel/trace v1.43.0 // indirect
+	go.opentelemetry.io/otel v1.44.0 // indirect
+	go.opentelemetry.io/otel/metric v1.44.0 // indirect
+	go.opentelemetry.io/otel/trace v1.44.0 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.4 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
