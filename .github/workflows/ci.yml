@@ -23,15 +23,8 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
+        cache: false
         go-version: ${{ matrix.go-version }}
-
-    - name: Cache Go modules
-      uses: actions/cache@v3
-      with:
-        path: ~/go/pkg/mod
-        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-        restore-keys: |
-          ${{ runner.os }}-go-
 
     - name: Install dependencies
       run: |
@@ -82,6 +75,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
+        cache: false
         go-version: ${{ matrix.go-version }}
 
     - name: Run integration tests
@@ -101,6 +95,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
+        cache: false
         go-version: '1.26.4'
 
     - name: Run Gosec Security Scanner
