@@ -12,7 +12,7 @@ permissions:
 jobs:
   test:
     name: Test Before Release
-    runs-on: lux-build-amd64
+    runs-on: linux-amd64
     env:
       GOTOOLCHAIN: auto
 
@@ -40,7 +40,7 @@ jobs:
   release:
     name: Create Release
     needs: test
-    runs-on: lux-build-amd64
+    runs-on: linux-amd64
     env:
       GOTOOLCHAIN: auto
 
