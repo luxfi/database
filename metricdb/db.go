@@ -59,7 +59,7 @@ func exponentialBuckets(start, factor float64, count int) []float64 {
 	}
 	buckets := make([]float64, count)
 	current := start
-	for i := 0; i < count; i++ {
+	for i := range count {
 		buckets[i] = current
 		current *= factor
 	}
@@ -72,7 +72,7 @@ func (mdb *Database) Close() error {
 }
 
 // HealthCheck implements the database.Database interface.
-func (mdb *Database) HealthCheck(ctx context.Context) (interface{}, error) {
+func (mdb *Database) HealthCheck(ctx context.Context) (any, error) {
 	return mdb.db.HealthCheck(ctx)
 }
 

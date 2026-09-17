@@ -29,7 +29,7 @@ func roundTrip(t *testing.T, recipient age.Recipient, identity age.Identity) {
 		t.Fatalf("open src: %v", err)
 	}
 	want := map[string]string{}
-	for i := 0; i < 50; i++ {
+	for i := range 50 {
 		k := fmt.Sprintf("key-%03d", i)
 		v := fmt.Sprintf("val-%03d", i)
 		if err := src.Put([]byte(k), []byte(v)); err != nil {

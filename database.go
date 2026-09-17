@@ -111,7 +111,7 @@ type Database interface {
 	Compacter
 	Syncer
 	io.Closer
-	HealthCheck(context.Context) (interface{}, error)
+	HealthCheck(context.Context) (any, error)
 
 	// Backup performs a backup of the database to the provided writer.
 	// This should be a consistent snapshot of the database state.

@@ -25,7 +25,7 @@ func TestCDCIncrementalRoundTrip(t *testing.T) {
 
 	const n = 3000
 	b := src.NewBatch()
-	for i := 0; i < n; i++ {
+	for i := range n {
 		if err := b.Put([]byte(fmt.Sprintf("k%06d", i)), []byte(fmt.Sprintf("v%06d", i))); err != nil {
 			t.Fatal(err)
 		}
@@ -62,7 +62,7 @@ func TestCDCIncrementalRoundTrip(t *testing.T) {
 		t.Fatalf("restore: %v", err)
 	}
 
-	for i := 0; i < n; i++ {
+	for i := range n {
 		got, err := restored.Get([]byte(fmt.Sprintf("k%06d", i)))
 		if err != nil {
 			t.Fatalf("key %d missing: %v", i, err)

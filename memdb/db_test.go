@@ -51,7 +51,7 @@ func TestMemDBBatch(t *testing.T) {
 	batch := db.NewBatch()
 
 	// Add operations to batch
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		key := []byte{byte(i)}
 		value := []byte{byte(i * 2)}
 		err := batch.Put(key, value)
@@ -63,7 +63,7 @@ func TestMemDBBatch(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify all values were written
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		key := []byte{byte(i)}
 		expected := []byte{byte(i * 2)}
 		got, err := db.Get(key)
@@ -77,7 +77,7 @@ func TestMemDBIterator(t *testing.T) {
 	defer db.Close()
 
 	// Insert test data
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		key := []byte{byte(i)}
 		value := []byte{byte(i * 2)}
 		err := db.Put(key, value)

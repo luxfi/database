@@ -30,7 +30,7 @@ func NewFromConfig(cfg DatabaseConfig) (database.Database, error) {
 	}
 
 	// Convert Registerer to interface{} for the factory
-	var gatherer interface{}
+	var gatherer any
 	if cfg.MetricsReg != nil {
 		gatherer = cfg.MetricsReg
 	}

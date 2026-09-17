@@ -95,7 +95,7 @@ func (db *Database) Close() error {
 	return db.handleError(db.Database.Close())
 }
 
-func (db *Database) HealthCheck(ctx context.Context) (interface{}, error) {
+func (db *Database) HealthCheck(ctx context.Context) (any, error) {
 	if err := db.corrupted(); err != nil {
 		return nil, err
 	}

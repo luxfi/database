@@ -313,10 +313,10 @@ func testConcurrentAccess(t *testing.T, idx database.HeightIndex) {
 	wg.Add(numGoroutines * 2) // writers + readers
 
 	// Start writers
-	for g := 0; g < numGoroutines; g++ {
+	for g := range numGoroutines {
 		go func(gID int) {
 			defer wg.Done()
-			for i := 0; i < numOperations; i++ {
+			for i := range numOperations {
 				height := uint64(gID*numOperations + i)
 				value := make([]byte, 8)
 				binary.BigEndian.PutUint64(value, height)
@@ -327,10 +327,10 @@ func testConcurrentAccess(t *testing.T, idx database.HeightIndex) {
 	}
 
 	// Start readers
-	for g := 0; g < numGoroutines; g++ {
+	for g := range numGoroutines {
 		go func(gID int) {
 			defer wg.Done()
-			for i := 0; i < numOperations; i++ {
+			for i := range numOperations {
 				height := uint64(gID*numOperations + i)
 				// May or may not exist depending on timing
 				_, err := idx.Get(height)
@@ -344,8 +344,8 @@ func testConcurrentAccess(t *testing.T, idx database.HeightIndex) {
 	wg.Wait()
 
 	// Verify all written values can be read
-	for g := 0; g < numGoroutines; g++ {
-		for i := 0; i < numOperations; i++ {
+	for g := range numGoroutines {
+		for i := range numOperations {
 			height := uint64(g*numOperations + i)
 			value, err := idx.Get(height)
 			require.NoError(err)

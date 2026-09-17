@@ -12,9 +12,9 @@ import (
 
 // MemoryManager provides memory management utilities.
 type MemoryManager struct {
-	allowedMemory  int64  // Total allowed memory in bytes
-	usedMemory     int64  // Currently used memory
-	maxMemory      uint64 // Max memory based on system
+	allowedMemory  int64        // Total allowed memory in bytes
+	usedMemory     atomic.Int64 // Currently used memory
+	maxMemory      uint64       // Max memory based on system
 	allowedPercent float64
 	memoryMu       sync.RWMutex
 	reserveChan    chan struct{}
@@ -64,12 +64,12 @@ func (mm *MemoryManager) Allowed() int64 {
 
 // Used returns the amount of memory currently in use
 func (mm *MemoryManager) Used() int64 {
-	return atomic.LoadInt64(&mm.usedMemory)
+	return mm.usedMemory.Load()
 }
 
 // Available returns the amount of memory available for allocation
 func (mm *MemoryManager) Available() int64 {
-	used := atomic.LoadInt64(&mm.usedMemory)
+	used := mm.usedMemory.Load()
 	return mm.allowedMemory - used
 }
 
@@ -79,17 +79,17 @@ func (mm *MemoryManager) TryReserve(size int64) bool {
 	mm.memoryMu.Lock()
 	defer mm.memoryMu.Unlock()
 
-	currentUsed := atomic.LoadInt64(&mm.usedMemory)
+	currentUsed := mm.usedMemory.Load()
 	newUsed := currentUsed + size
 
 	if newUsed > mm.allowedMemory {
 		return false
 	}
 
-	atomic.AddInt64(&mm.usedMemory, size)
+	mm.usedMemory.Add(size)
 
 	if mm.usageGauge != nil {
-		mm.usageGauge.Set(float64(atomic.LoadInt64(&mm.usedMemory)))
+		mm.usageGauge.Set(float64(mm.usedMemory.Load()))
 	}
 	if mm.availableGauge != nil {
 		mm.availableGauge.Set(float64(mm.Available()))
@@ -111,10 +111,10 @@ func (mm *MemoryManager) Reserve(size int64) {
 
 // Release releases previously reserved memory
 func (mm *MemoryManager) Release(size int64) {
-	atomic.AddInt64(&mm.usedMemory, -size)
+	mm.usedMemory.Add(-size)
 
 	if mm.usageGauge != nil {
-		mm.usageGauge.Set(float64(atomic.LoadInt64(&mm.usedMemory)))
+		mm.usageGauge.Set(float64(mm.usedMemory.Load()))
 	}
 	if mm.availableGauge != nil {
 		mm.availableGauge.Set(float64(mm.Available()))
@@ -139,7 +139,7 @@ func (mm *MemoryManager) ReserveCritical(size int64) {
 	select {
 	case <-mm.reserveChan:
 		// We have access to critical reserve
-		atomic.AddInt64(&mm.usedMemory, size)
+		mm.usedMemory.Add(size)
 	case <-mm.reserveChan:
 		// Double-check and release if we didn't actually need it
 		// This is a safeguard to ensure the channel stays populated
@@ -153,7 +153,7 @@ func (mm *MemoryManager) ReserveCritical(size int64) {
 
 // ReleaseCritical releases memory from the critical reserve pool
 func (mm *MemoryManager) ReleaseCritical(size int64) {
-	atomic.AddInt64(&mm.usedMemory, -size)
+	mm.usedMemory.Add(-size)
 	// Restore the critical reserve token if needed
 	if len(mm.reserveChan) == 0 {
 		mm.reserveChan <- struct{}{}
@@ -197,7 +197,7 @@ type ObjectPool[T any] struct {
 func NewObjectPool[T any](newFn func() T, size int64, mm *MemoryManager, reg metric.Registry) *ObjectPool[T] {
 	op := &ObjectPool[T]{
 		pool: &sync.Pool{
-			New: func() interface{} { return newFn() },
+			New: func() any { return newFn() },
 		},
 		size: size,
 		mm:   mm,

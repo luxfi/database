@@ -128,7 +128,7 @@ func TestPhysicalSnapshotRoundTrip(t *testing.T) {
 	}
 
 	// Verify all 10000 keys present and correct.
-	for i := 0; i < 10000; i++ {
+	for i := range 10000 {
 		want := fmt.Sprintf("v%06d", i)
 		got, err := restored.Get([]byte(fmt.Sprintf("k%06d", i)))
 		if err != nil {

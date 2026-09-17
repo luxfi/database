@@ -81,7 +81,7 @@ func (m *Manager) RegisterCodec(version uint16, codec codec.Codec) error {
 }
 
 // Marshal encodes the source object
-func (m *Manager) Marshal(version uint16, source interface{}) ([]byte, error) {
+func (m *Manager) Marshal(version uint16, source any) ([]byte, error) {
 	codec, exists := m.codecs[version]
 	if !exists {
 		return nil, fmt.Errorf("%w: %d", ErrUnknownVersion, version)
@@ -107,7 +107,7 @@ func (m *Manager) Marshal(version uint16, source interface{}) ([]byte, error) {
 }
 
 // Unmarshal decodes into the destination object
-func (m *Manager) Unmarshal(source []byte, destination interface{}) (uint16, error) {
+func (m *Manager) Unmarshal(source []byte, destination any) (uint16, error) {
 	if len(source) < 2 {
 		return 0, errors.New("insufficient bytes for codec version")
 	}
@@ -130,7 +130,7 @@ func (m *Manager) Unmarshal(source []byte, destination interface{}) (uint16, err
 }
 
 // Size returns the encoded size of the object
-func (m *Manager) Size(version uint16, source interface{}) (int, error) {
+func (m *Manager) Size(version uint16, source any) (int, error) {
 	codec, exists := m.codecs[version]
 	if !exists {
 		return 0, fmt.Errorf("%w: %d", ErrUnknownVersion, version)
@@ -148,14 +148,14 @@ func (m *Manager) Size(version uint16, source interface{}) (int, error) {
 type LinearCodec struct{}
 
 // MarshalInto marshals the source into the destination buffer
-func (c *LinearCodec) MarshalInto(source interface{}, destination []byte) error {
+func (c *LinearCodec) MarshalInto(source any, destination []byte) error {
 	return marshal(reflect.ValueOf(source), destination)
 }
 
 // Unmarshal unmarshals from source into destination
-func (c *LinearCodec) Unmarshal(source []byte, destination interface{}) error {
+func (c *LinearCodec) Unmarshal(source []byte, destination any) error {
 	destPtr := reflect.ValueOf(destination)
-	if destPtr.Kind() != reflect.Ptr {
+	if destPtr.Kind() != reflect.Pointer {
 		return fmt.Errorf("%w: expected pointer, got %T", ErrUnexpectedType, destination)
 	}
 
@@ -164,7 +164,7 @@ func (c *LinearCodec) Unmarshal(source []byte, destination interface{}) error {
 }
 
 // Size returns the encoded size of the value
-func (c *LinearCodec) Size(value interface{}) (int, error) {
+func (c *LinearCodec) Size(value any) (int, error) {
 	return calcSize(reflect.ValueOf(value))
 }
 

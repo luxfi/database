@@ -71,7 +71,7 @@ func TestLiveDeterministicRoundTrip(t *testing.T) {
 		t.Fatalf("open src: %v", err)
 	}
 	want := map[string]string{}
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		k, v := fmt.Sprintf("k-%04d", i), fmt.Sprintf("v-%04d", i)
 		if err := src.Put([]byte(k), []byte(v)); err != nil {
 			t.Fatalf("put: %v", err)
@@ -158,7 +158,7 @@ func TestLiveStreamingReplicator(t *testing.T) {
 
 	want := map[string]string{}
 	// Write across several 1s incremental ticks.
-	for i := 0; i < 40; i++ {
+	for i := range 40 {
 		k, v := fmt.Sprintf("s-%04d", i), fmt.Sprintf("v-%04d", i)
 		if err := src.Put([]byte(k), []byte(v)); err != nil {
 			t.Fatalf("put: %v", err)
@@ -179,8 +179,7 @@ func TestLiveStreamingReplicator(t *testing.T) {
 		t.Fatalf("open dst: %v", err)
 	}
 	defer dst.Close()
-	ctx2, cancel2 := context.WithCancel(context.Background())
-	defer cancel2()
+	ctx2 := t.Context()
 	if err := dst.StartReplicator(ctx2); err != nil {
 		t.Fatalf("dst StartReplicator (restore-on-boot): %v", err)
 	}
@@ -226,7 +225,7 @@ func TestLiveIncrementalEfficiency(t *testing.T) {
 	// Simulate blocks: each writes perBlock trie key/values, then one incremental.
 	const blocks, perBlock = 40, 200
 	dataPerBlock := perBlock * (valSz + 24) // ~key+value bytes mutated per block
-	for b := 0; b < blocks; b++ {
+	for b := range blocks {
 		writeBlock(t, src, fmt.Sprintf("blk%05d-", b), perBlock, valSz)
 		if err := rep.Incremental(ctx); err != nil {
 			t.Fatalf("incremental %d: %v", b, err)
@@ -249,7 +248,7 @@ func TestLiveIncrementalEfficiency(t *testing.T) {
 func writeBlock(t *testing.T, db *Database, prefix string, n, valSz int) {
 	t.Helper()
 	val := make([]byte, valSz)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		k := []byte(fmt.Sprintf("%s%06d", prefix, i))
 		// vary value so it's a real write, not a no-op dedup
 		val[0], val[1] = byte(i), byte(i>>8)

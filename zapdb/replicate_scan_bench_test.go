@@ -21,7 +21,7 @@ func TestScanCostVsGate(t *testing.T) {
 
 	const n = 200_000
 	batch := db.NewBatch()
-	for i := 0; i < n; i++ {
+	for i := range n {
 		k := []byte(fmt.Sprintf("key-%012d", i))
 		if err := batch.Put(k, []byte("value-payload-32-bytes-padding!!")); err != nil {
 			t.Fatal(err)
@@ -65,7 +65,7 @@ func TestScanCostVsGate(t *testing.T) {
 
 	// Idle incremental, NEW path: the cheap gate.
 	t1 := time.Now()
-	for i := 0; i < 1000; i++ {
+	for range 1000 {
 		_ = db.db.MaxVersion()
 	}
 	gate := time.Since(t1) / 1000

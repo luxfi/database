@@ -72,7 +72,7 @@ func BenchmarkIncrementalDeltaShip(b *testing.B) {
 
 	mutate := func() {
 		bt := db.NewWriteBatch()
-		for i := 0; i < churn; i++ {
+		for i := range churn {
 			_ = bt.Set([]byte(fmt.Sprintf("key-%012d", i)), []byte("CHANGED-32-byte-value-padding!!!"))
 		}
 		_ = bt.Flush()

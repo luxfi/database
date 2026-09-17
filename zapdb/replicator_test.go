@@ -74,8 +74,7 @@ func TestStartReplicatorIdempotent(t *testing.T) {
 	}
 	defer db.Close()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	if err := db.StartReplicator(ctx); err != nil {
 		t.Fatalf("first StartReplicator: %v", err)
 	}

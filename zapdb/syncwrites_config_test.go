@@ -52,8 +52,8 @@ func TestSyncWritesParsesFromJSON(t *testing.T) {
 		want *bool
 	}{
 		{"absent", `{}`, nil},
-		{"false", `{"syncWrites": false}`, boolPtr(false)},
-		{"true", `{"syncWrites": true}`, boolPtr(true)},
+		{"false", `{"syncWrites": false}`, new(false)},
+		{"true", `{"syncWrites": true}`, new(true)},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			cfg, err := parseConfig([]byte(tc.json))
@@ -71,5 +71,3 @@ func TestSyncWritesParsesFromJSON(t *testing.T) {
 		})
 	}
 }
-
-func boolPtr(b bool) *bool { return &b }

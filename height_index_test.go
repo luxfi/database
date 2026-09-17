@@ -348,7 +348,7 @@ func BenchmarkHeightIndexGet(b *testing.B) {
 	value := []byte("benchmark_data")
 
 	// Pre-populate
-	for i := 0; i < 10000; i++ {
+	for i := range 10000 {
 		_ = idx.Put(uint64(i), value)
 	}
 
@@ -366,7 +366,7 @@ func BenchmarkHeightIndexHas(b *testing.B) {
 	value := []byte("benchmark_data")
 
 	// Pre-populate
-	for i := 0; i < 10000; i++ {
+	for i := range 10000 {
 		_ = idx.Put(uint64(i), value)
 	}
 

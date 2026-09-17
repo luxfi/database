@@ -43,7 +43,7 @@ func benchReplicator(b testing.TB, nKeys int, compress bool) (*vfsReplicator, fu
 	}
 	batch := db.NewBatch()
 	val := make([]byte, 256) // realistic trie-ish value
-	for i := 0; i < nKeys; i++ {
+	for i := range nKeys {
 		if err := batch.Put([]byte(fmt.Sprintf("key-%012d", i)), val); err != nil {
 			b.Fatal(err)
 		}

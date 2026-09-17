@@ -38,7 +38,7 @@ func BenchmarkGet(b *testing.B) {
 	value := []byte("benchmark_data")
 
 	// Pre-populate
-	for i := 0; i < 10000; i++ {
+	for i := range 10000 {
 		_ = db.Put(uint64(i), value)
 	}
 
@@ -56,7 +56,7 @@ func BenchmarkHas(b *testing.B) {
 	value := []byte("benchmark_data")
 
 	// Pre-populate
-	for i := 0; i < 10000; i++ {
+	for i := range 10000 {
 		_ = db.Put(uint64(i), value)
 	}
 
@@ -92,7 +92,7 @@ func BenchmarkConcurrentReadWrite(b *testing.B) {
 	value := []byte("benchmark_data")
 
 	// Pre-populate
-	for i := 0; i < 10000; i++ {
+	for i := range 10000 {
 		_ = db.Put(uint64(i), value)
 	}
 

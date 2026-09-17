@@ -107,7 +107,7 @@ func New(
 	dbPath string,
 	readOnly bool,
 	config []byte,
-	gatherer interface{}, // Can be metric.Gatherer or metric.MultiGatherer
+	gatherer any, // Can be metric.Gatherer or metric.MultiGatherer
 	logger log.Logger,
 	metricsPrefix string,
 	meterDBRegName string,

@@ -202,7 +202,7 @@ func (db *Database) Close() error {
 	return db.db.Close()
 }
 
-func (db *Database) HealthCheck(ctx context.Context) (interface{}, error) {
+func (db *Database) HealthCheck(ctx context.Context) (any, error) {
 	return db.db.HealthCheck(ctx)
 }
 

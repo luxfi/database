@@ -26,7 +26,7 @@ func New(prefix []byte, db database.Database) *Database {
 		db:     db,
 		prefix: prefix,
 		bufferPool: sync.Pool{
-			New: func() interface{} {
+			New: func() any {
 				return make([]byte, 0, len(prefix)+256)
 			},
 		},
@@ -44,7 +44,7 @@ func (p *Database) Close() error {
 }
 
 // HealthCheck implements the database.Database interface.
-func (p *Database) HealthCheck(ctx context.Context) (interface{}, error) {
+func (p *Database) HealthCheck(ctx context.Context) (any, error) {
 	return p.db.HealthCheck(ctx)
 }
 

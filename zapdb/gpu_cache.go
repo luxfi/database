@@ -556,11 +556,8 @@ func sortEntries(entries []extractedEntry) {
 }
 
 func bytesLess(a, b []byte) bool {
-	minLen := len(a)
-	if len(b) < minLen {
-		minLen = len(b)
-	}
-	for i := 0; i < minLen; i++ {
+	minLen := min(len(b), len(a))
+	for i := range minLen {
 		if a[i] < b[i] {
 			return true
 		}

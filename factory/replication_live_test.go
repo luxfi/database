@@ -56,7 +56,7 @@ func TestLiveFactoryBaseDBAutoReplicates(t *testing.T) {
 	defer db.Close()
 
 	// Write across a few 1s incremental ticks.
-	for i := 0; i < 30; i++ {
+	for i := range 30 {
 		if err := db.Put([]byte(string(rune('a'+i%26))+itoa(i)), []byte("v")); err != nil {
 			t.Fatalf("put: %v", err)
 		}
@@ -97,7 +97,7 @@ func TestLiveFactoryPluginDoesNotReplicate(t *testing.T) {
 		t.Fatalf("factory.New: %v", err)
 	}
 	defer db.Close()
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		_ = db.Put([]byte("k"+itoa(i)), []byte("v"))
 	}
 	time.Sleep(1500 * time.Millisecond)

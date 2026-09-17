@@ -183,7 +183,7 @@ func (d *Database) Close() error {
 }
 
 // HealthCheck returns nil if the database is healthy, non-nil otherwise.
-func (d *Database) HealthCheck(ctx context.Context) (interface{}, error) {
+func (d *Database) HealthCheck(ctx context.Context) (any, error) {
 	d.closeMu.RLock()
 	defer d.closeMu.RUnlock()
 
@@ -889,23 +889,23 @@ type badgerLogger struct {
 }
 
 // Errorf logs an error message
-func (l *badgerLogger) Errorf(format string, args ...interface{}) {
+func (l *badgerLogger) Errorf(format string, args ...any) {
 	// Log to stderr for now
 	log.Error(fmt.Sprintf("[%s] %s", l.namespace, fmt.Sprintf(format, args...)))
 }
 
 // Warningf logs a warning message
-func (l *badgerLogger) Warningf(format string, args ...interface{}) {
+func (l *badgerLogger) Warningf(format string, args ...any) {
 	log.Warn(fmt.Sprintf("[%s] %s", l.namespace, fmt.Sprintf(format, args...)))
 }
 
 // Infof logs an info message
-func (l *badgerLogger) Infof(format string, args ...interface{}) {
+func (l *badgerLogger) Infof(format string, args ...any) {
 	log.Info(fmt.Sprintf("[%s] %s", l.namespace, fmt.Sprintf(format, args...)))
 }
 
 // Debugf logs a debug message
-func (l *badgerLogger) Debugf(format string, args ...interface{}) {
+func (l *badgerLogger) Debugf(format string, args ...any) {
 	log.Debug(fmt.Sprintf("[%s] %s", l.namespace, fmt.Sprintf(format, args...)))
 }
 
@@ -1038,7 +1038,7 @@ func (s *snapshotDB) Close() error {
 }
 
 // HealthCheck implements the Database interface for snapshot
-func (s *snapshotDB) HealthCheck(ctx context.Context) (interface{}, error) {
+func (s *snapshotDB) HealthCheck(ctx context.Context) (any, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 

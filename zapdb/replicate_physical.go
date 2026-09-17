@@ -146,7 +146,7 @@ var physicalStrict = false
 
 func stagePhysical(srcDir, stage string) error {
 	var lastErr error
-	for attempt := 0; attempt < 5; attempt++ {
+	for range 5 {
 		_ = os.RemoveAll(stage)
 		if err := os.MkdirAll(stage, 0o755); err != nil {
 			return err
