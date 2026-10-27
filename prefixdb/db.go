@@ -14,8 +14,10 @@ import (
 // Database partitions a database into a sub-database by prefixing all keys with
 // a unique value.
 type Database struct {
+	lock   sync.RWMutex
 	db     database.Database
 	prefix []byte
+	closed bool
 
 	bufferPool sync.Pool
 }
@@ -39,40 +41,98 @@ func NewNested(prefix []byte, db database.Database) *Database {
 }
 
 // Close implements the database.Database interface.
+// Closing a prefixed view releases only the view; the parent store's owner is
+// responsible for closing the underlying database.
 func (p *Database) Close() error {
-	return p.db.Close()
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	if p.closed {
+		return database.ErrClosed
+	}
+	p.closed = true
+	return nil
+}
+
+func (p *Database) isClosed() bool {
+	p.lock.RLock()
+	defer p.lock.RUnlock()
+
+	return p.closed
 }
 
 // HealthCheck implements the database.Database interface.
 func (p *Database) HealthCheck(ctx context.Context) (any, error) {
+	p.lock.RLock()
+	defer p.lock.RUnlock()
+
+	if p.closed {
+		return nil, database.ErrClosed
+	}
 	return p.db.HealthCheck(ctx)
 }
 
 func (p *Database) Backup(w io.Writer, since uint64) (uint64, error) {
+	p.lock.RLock()
+	defer p.lock.RUnlock()
+
+	if p.closed {
+		return 0, database.ErrClosed
+	}
 	return p.db.Backup(w, since)
 }
 
 func (p *Database) Load(r io.Reader) error {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	if p.closed {
+		return database.ErrClosed
+	}
 	return p.db.Load(r)
 }
 
 // Has implements the database.Database interface.
 func (p *Database) Has(key []byte) (bool, error) {
+	p.lock.RLock()
+	defer p.lock.RUnlock()
+
+	if p.closed {
+		return false, database.ErrClosed
+	}
 	return p.db.Has(p.prefixKey(key))
 }
 
 // Get implements the database.Database interface.
 func (p *Database) Get(key []byte) ([]byte, error) {
+	p.lock.RLock()
+	defer p.lock.RUnlock()
+
+	if p.closed {
+		return nil, database.ErrClosed
+	}
 	return p.db.Get(p.prefixKey(key))
 }
 
 // Put implements the database.Database interface.
 func (p *Database) Put(key, value []byte) error {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	if p.closed {
+		return database.ErrClosed
+	}
 	return p.db.Put(p.prefixKey(key), value)
 }
 
 // Delete implements the database.Database interface.
 func (p *Database) Delete(key []byte) error {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	if p.closed {
+		return database.ErrClosed
+	}
 	return p.db.Delete(p.prefixKey(key))
 }
 
@@ -111,6 +171,15 @@ func (p *Database) NewIteratorWithPrefix(prefix []byte) database.Iterator {
 // also built in its OWN buffer (prefixKey) so the two never alias p.prefix's
 // backing array.
 func (p *Database) NewIteratorWithStartAndPrefix(start, prefix []byte) database.Iterator {
+	p.lock.RLock()
+	defer p.lock.RUnlock()
+
+	if p.closed {
+		return &database.IteratorError{
+			Err: database.ErrClosed,
+		}
+	}
+
 	var prefixedStart []byte
 	if len(start) > 0 {
 		prefixedStart = p.prefixKey(start)
@@ -124,6 +193,12 @@ func (p *Database) NewIteratorWithStartAndPrefix(start, prefix []byte) database.
 
 // Compact implements the database.Database interface.
 func (p *Database) Compact(start, limit []byte) error {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	if p.closed {
+		return database.ErrClosed
+	}
 	if start != nil {
 		start = p.prefixKey(start)
 	}
@@ -135,6 +210,12 @@ func (p *Database) Compact(start, limit []byte) error {
 
 // Sync implements the database.Syncer interface by delegating to the underlying database.
 func (p *Database) Sync() error {
+	p.lock.Lock()
+	defer p.lock.Unlock()
+
+	if p.closed {
+		return database.ErrClosed
+	}
 	return p.db.Sync()
 }
 
@@ -177,6 +258,17 @@ func (b *batch) Delete(key []byte) error {
 	return b.Batch.Delete(b.prefix.prefixKey(key))
 }
 
+// Write implements the database.Batch interface.
+func (b *batch) Write() error {
+	b.prefix.lock.RLock()
+	defer b.prefix.lock.RUnlock()
+
+	if b.prefix.closed {
+		return database.ErrClosed
+	}
+	return b.Batch.Write()
+}
+
 // Inner implements the database.Batch interface.
 func (b *batch) Inner() database.Batch {
 	return b.Batch
@@ -186,18 +278,56 @@ func (b *batch) Inner() database.Batch {
 type iterator struct {
 	database.Iterator
 	prefix *Database
+
+	key, val []byte
+	err      error
+}
+
+// Next moves the iterator to the next key/value pair.
+func (it *iterator) Next() bool {
+	if it.prefix.isClosed() {
+		it.key = nil
+		it.val = nil
+		it.err = database.ErrClosed
+		return false
+	}
+
+	next := it.Iterator.Next()
+	if next {
+		if rawKey := it.Iterator.Key(); rawKey != nil {
+			it.key = it.prefix.removePrefix(rawKey)
+		} else {
+			it.key = nil
+		}
+		it.val = it.Iterator.Value()
+	} else {
+		it.key = nil
+		it.val = nil
+	}
+	return next
 }
 
 // Key implements the database.Iterator interface.
 func (it *iterator) Key() []byte {
-	key := it.Iterator.Key()
-	if key == nil {
-		return nil
-	}
-	return it.prefix.removePrefix(key)
+	return it.key
+}
+
+// Value implements the database.Iterator interface.
+func (it *iterator) Value() []byte {
+	return it.val
 }
 
 // Error implements the database.Iterator interface.
 func (it *iterator) Error() error {
+	if it.err != nil {
+		return it.err
+	}
 	return it.Iterator.Error()
+}
+
+// Release implements the database.Iterator interface.
+func (it *iterator) Release() {
+	it.key = nil
+	it.val = nil
+	it.Iterator.Release()
 }
