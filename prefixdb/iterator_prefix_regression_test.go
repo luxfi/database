@@ -4,9 +4,11 @@
 package prefixdb
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/luxfi/database"
+	"github.com/luxfi/database/dbtest"
 	"github.com/luxfi/database/memdb"
 )
 
@@ -95,4 +97,71 @@ type startRecorder struct {
 func (r *startRecorder) NewIteratorWithStartAndPrefix(start, prefix []byte) database.Iterator {
 	r.gotStart = start
 	return r.Database.NewIteratorWithStartAndPrefix(start, prefix)
+}
+
+// TestCloseReleasesViewWithoutClosingParent verifies issue #6: closing a
+// prefixdb view marks only that view as closed while leaving the parent
+// database and sibling prefixed views open.
+func TestCloseReleasesViewWithoutClosingParent(t *testing.T) {
+	parent := memdb.New()
+	viewA := New([]byte("a:"), parent)
+	viewB := New([]byte("b:"), parent)
+
+	if err := viewA.Put([]byte("k"), []byte("va")); err != nil {
+		t.Fatalf("viewA.Put: %v", err)
+	}
+	if err := viewB.Put([]byte("k"), []byte("vb")); err != nil {
+		t.Fatalf("viewB.Put: %v", err)
+	}
+
+	if err := viewA.Close(); err != nil {
+		t.Fatalf("viewA.Close: %v", err)
+	}
+	if err := viewA.Close(); !errors.Is(err, database.ErrClosed) {
+		t.Fatalf("second viewA.Close = %v, want %v", err, database.ErrClosed)
+	}
+	if _, err := viewA.Get([]byte("k")); !errors.Is(err, database.ErrClosed) {
+		t.Fatalf("viewA.Get after close = %v, want %v", err, database.ErrClosed)
+	}
+
+	// Sibling view and parent store must remain open.
+	gotB, err := viewB.Get([]byte("k"))
+	if err != nil {
+		t.Fatalf("viewB.Get after viewA.Close: %v", err)
+	}
+	if string(gotB) != "vb" {
+		t.Fatalf("viewB.Get = %q, want %q", gotB, "vb")
+	}
+	if err := parent.Put([]byte("ungraceful-shutdown"), []byte("0")); err != nil {
+		t.Fatalf("parent.Put after viewA.Close: %v", err)
+	}
+	if err := parent.Delete([]byte("ungraceful-shutdown")); err != nil {
+		t.Fatalf("parent.Delete after viewA.Close: %v", err)
+	}
+	if err := parent.Close(); err != nil {
+		t.Fatalf("parent.Close: %v", err)
+	}
+}
+
+func TestCloseLifecycleSuiteOnSharedParent(t *testing.T) {
+	lifecycleTests := map[string]func(t *testing.T, db database.Database){
+		"SimpleKeyValueClosed":      dbtest.TestSimpleKeyValueClosed,
+		"NewBatchClosed":            dbtest.TestNewBatchClosed,
+		"BatchPut":                  dbtest.TestBatchPut,
+		"IteratorClosed":            dbtest.TestIteratorClosed,
+		"IteratorError":             dbtest.TestIteratorError,
+		"IteratorErrorAfterRelease": dbtest.TestIteratorErrorAfterRelease,
+		"CompactNoPanic":            dbtest.TestCompactNoPanic,
+	}
+	for name, test := range lifecycleTests {
+		t.Run(name, func(t *testing.T) {
+			db := memdb.New()
+			test(t, New([]byte("hello"), db))
+			test(t, New([]byte("world"), db))
+			test(t, New([]byte("wor"), New([]byte("ld1"), db)))
+			test(t, New([]byte("ld1"), New([]byte("wor"), db)))
+			test(t, NewNested([]byte("wor"), New([]byte("ld2"), db)))
+			test(t, NewNested([]byte("ld2"), New([]byte("wor"), db)))
+		})
+	}
 }
